@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/code%20license-MIT-blue.svg)](LICENSE)
 
+![Command — intro splash and mission board](docs/hero.gif)
+
 A single-site, layered authentication CTF for practising the **OWASP WSTG Authentication**
 tests. One website, six operations. **Missions unlock one at a time** — clear the current
 breach and the next operation appears at Command; everything beyond it stays classified.
