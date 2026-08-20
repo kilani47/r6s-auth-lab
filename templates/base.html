@@ -46,6 +46,9 @@
   };
 </script>
 <style>
+  /* belt-and-suspenders: if body's content is shorter than the viewport, html's own
+     background shows through beneath it -- keep that dark too, not browser-default white. */
+  html{ background:#04060a; }
   /* layered tactical backdrop + scanlines (easier as raw CSS than utilities) */
   .app-bg{
     background:
