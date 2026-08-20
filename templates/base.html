@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SHIELDBREAKER{% endblock %}</title>
+<script src="/static/vendor/tailwind.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg:'#07090c', panel:'#0f151c', panel2:'#12171d', line:'#1e2a36',
+          txt:'#d7dee6', dim:'#7d8b99',
+          atk:'#f0a202', atk2:'#ff6b1a', def:'#2f7fe0', win:'#3fb950', red:'#e23b3b',
+        },
+        fontFamily: {
+          sans: ['"Segoe UI"','Roboto','system-ui','sans-serif'],
+          mono: ['"JetBrains Mono"','ui-monospace','Consolas','monospace'],
+        },
+        keyframes: {
+          slam: {
+            '0%':  {transform:'scale(2.3) rotate(-12deg)', opacity:'0'},
+            '60%': {opacity:'1'},
+            '70%': {transform:'scale(.93) rotate(2deg)'},
+            '100%':{transform:'scale(1) rotate(0)'},
+          },
+          rise: { '0%':{opacity:'0', transform:'translateY(18px)'}, '100%':{opacity:'1', transform:'none'} },
+          boom: { '0%':{opacity:'1', transform:'translate(-50%,-50%) scale(.2)'},
+                  '100%':{opacity:'0', transform:'translate(-50%,-50%) scale(2.6)'} },
+          flash:{ '0%':{opacity:'.85'}, '100%':{opacity:'0'} },
+          pulseglow:{ '0%,100%':{opacity:'.5'}, '50%':{opacity:'1'} },
+        },
+        animation: {
+          slam:'slam .55s cubic-bezier(.2,1.4,.4,1) both',
+          'rise-1':'rise .5s ease-out .2s both',
+          'rise-2':'rise .5s ease-out .32s both',
+          'rise-3':'rise .5s ease-out .46s both',
+          'rise-4':'rise .5s ease-out .6s both',
+          boom:'boom .6s ease-out .15s both',
+          flash:'flash .5s ease-out both',
+          pulseglow:'pulseglow 2.4s ease-in-out infinite',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  /* layered tactical backdrop + scanlines (easier as raw CSS than utilities) */
+  .app-bg{
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px),
+      radial-gradient(1400px 700px at 50% -20%, #12202e, transparent),
+      linear-gradient(180deg, #080b0f, #04060a);
+  }
+  .scanlines{ background:repeating-linear-gradient(0deg, rgba(63,185,80,.05) 0 2px, transparent 2px 5px); mix-blend-mode:screen; }
+  /* angular clip for tactical panels */
+  .clip-tac{ clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%); }
+  .text-glow-atk{ text-shadow:0 0 40px rgba(240,162,2,.18); }
+  .text-glow-win{ text-shadow:0 0 26px rgba(63,185,80,.7); }
+  .word-break{ word-break:break-all; }
+  ::selection{ background:rgba(240,162,2,.3); }
+</style>
+{% block head %}{% endblock %}
+</head>
+<body class="app-bg text-txt font-sans min-h-screen m-0">
+{% block body %}{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

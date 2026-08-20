@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Rainbow-Corp // Perimeter Access Terminal{% endblock %}
+{% block body %}
+  <a href="/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Command</a>
+  <div class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-[430px] bg-panel2 border border-line rounded-xl overflow-hidden shadow-[0_22px_60px_rgba(0,0,0,.6)]">
+      <div class="relative flex items-center gap-4 px-6 py-5 border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <img src="/static/img/ops/clash.svg" alt="Clash" class="w-[70px] h-[70px] shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,.5)]">
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-atk uppercase">Operation 03 · Hard Breach</div>
+          <h1 class="my-1 text-xl tracking-wide font-bold">Perimeter Terminal</h1>
+          <div class="text-[12px] text-dim">Rainbow-Corp · Physical Access Control</div>
+        </div>
+        <div class="absolute top-3.5 right-3.5" title="Your operator: Dokkaebi">
+          <img src="/static/img/ops/dokkaebi.svg" alt="Dokkaebi" class="w-[30px] h-[30px] opacity-85">
+        </div>
+      </div>
+
+      <div class="mx-6 mt-4 px-3.5 py-2.5 rounded-md text-[12px] border border-line bg-[#0c1116] text-dim">
+        Target device confirmed: <span class="text-txt font-semibold">G. MENDEL</span> — access code required.
+      </div>
+
+      {% if error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-md text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/op3/login" class="px-6 py-5">
+        <label for="pin" class="block text-[12px] text-dim mt-1 mb-1.5 tracking-wide uppercase">4-Digit Access Code</label>
+        <input id="pin" name="pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+               placeholder="0000" class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-md text-txt text-sm
+               tracking-[.4em] text-center font-mono outline-none focus:border-atk">
+
+        <label class="block text-[12px] text-dim mt-4 mb-1.5 tracking-wide uppercase">Verification Challenge</label>
+        <div class="bg-[#0c1116] border border-line rounded-md px-3.5 py-3">
+          <div id="captcha-challenge" class="font-mono text-lg text-atk tracking-wide select-none whitespace-nowrap overflow-x-auto">{{ a }} {{ op }} {{ b }} = ?</div>
+          <input name="captcha" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="answer"
+                 class="w-full mt-2.5 px-3 py-2 bg-[#080b0e] border border-line rounded-md text-txt text-sm outline-none focus:border-atk">
+        </div>
+
+        <button type="submit"
+                class="w-full mt-5 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase rounded-md hover:brightness-110 transition">Override Perimeter</button>
+      </form>
+      <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">Challenge refreshes on every attempt · No account lockout enforced</div>
+    </div>
+  </div>
+{% endblock %}

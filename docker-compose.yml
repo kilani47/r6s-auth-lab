@@ -1,0 +1,7 @@
+services:
+  shieldbreaker:
+    build: .
+    container_name: shieldbreaker
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
