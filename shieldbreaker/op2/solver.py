@@ -22,7 +22,7 @@ import sys, os, re, requests
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000").rstrip("/")
 USER = "g.mendel"                       # the admin, confirmed back in Operation 01
-WORDLIST = os.path.join(os.path.dirname(__file__), "..", "wordlists", "op2_base_words.txt")
+WORDLIST = os.path.join(os.path.dirname(__file__), "..", "..", "wordlists", "op2_base_words.txt")
 
 DIGIT_COUNT = 2
 SYMBOLS = "!@#$"

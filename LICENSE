@@ -23,8 +23,9 @@ SOFTWARE.
 ---
 
 SCOPE NOTE: This license covers the original source code, documentation, and
-written content of this project (app.py, templates' markup/logic, solvers/,
-CHALLENGER.md, DEBRIEF.md, README.md, and other files authored for this repo).
+written content of this project (app.py, templates' markup/logic, every
+solver.py, every CHALLENGER.md/DEBRIEF.md, README.md, and other files authored
+for this repo).
 
 It does NOT cover, and no rights are granted to, third-party Rainbow Six
 Siege-derived assets included in this repository for educational/thematic

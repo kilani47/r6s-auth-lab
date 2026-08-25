@@ -23,10 +23,12 @@ Themed on Rainbow Six Siege, with **faction-accurate rosters** — you play a re
 
 ## 📖 Which doc do you want?
 
+Each operation has its own briefing + debrief, grouped by campaign folder:
+
 | I want to... | Read |
 |---|---|
-| **Play it** as a real blackbox challenge | [`CHALLENGER.md`](CHALLENGER.md) — briefing, rules of engagement, wordlist, progressive hints. **No spoilers.** |
-| **Check my work**, or understand *why* it worked after solving | [`DEBRIEF.md`](DEBRIEF.md) — the lesson in plain language, what to pay attention to and why, plus the answer key. Spoilers. |
+| **Play it** as a real blackbox challenge | [`shieldbreaker/README.md`](shieldbreaker/README.md) — mission index, rules of engagement, links to every operation's `CHALLENGER.md`. **No spoilers.** |
+| **Check my work**, or understand *why* it worked after solving | Each operation's own `DEBRIEF.md` (e.g. [`shieldbreaker/op1/DEBRIEF.md`](shieldbreaker/op1/DEBRIEF.md)) — the lesson in plain language, code walkthrough, self-check, full answer key. Spoilers. |
 | Understand how it's **built** | keep reading below |
 
 ---
@@ -43,7 +45,8 @@ Themed on Rainbow Six Siege, with **faction-accurate rosters** — you play a re
 | 06 | Back Door | **Nomad** ⚔ **Kaid** | ATHN-08 | Alternative-channel auth |
 
 > **All six operations ship.** The campaign is complete — each reveals in the UI (and has its
-> own section in `CHALLENGER.md` / `DEBRIEF.md`) the moment the previous one is cleared.
+> own `CHALLENGER.md` / `DEBRIEF.md` under [`shieldbreaker/`](shieldbreaker/)) the moment the
+> previous one is cleared.
 
 ---
 
@@ -72,13 +75,16 @@ static/img/ops/         real operator icons (see Assets below)
 static/img/             victory clips (per-op) — victory-op<N>.gif or .webp
 static/img/intro-wall.jpg  Command's intro splash wallpaper
 wordlists/               recon wordlists handed to the player (no answers)
-solvers/                 reference/instructor solvers — one per operation
-CHALLENGER.md           player-facing briefing (no spoilers)
-DEBRIEF.md              the lesson, explained + answer key + report language (spoilers)
+shieldbreaker/           campaign docs, one folder per operation:
+  README.md                mission index + rules of engagement
+  op1/ .. op6/              each has CHALLENGER.md (no spoilers), DEBRIEF.md (spoilers),
+                            and solver.py (reference/instructor solver)
 ```
 
-Adding an operation = add its route(s)/logic to `app.py`, templates, a wordlist if it needs
-one, a mission entry in `MISSIONS` (set `built: True`), and sections in both `.md` docs.
+The Flask app itself (`app.py`, `templates/`) stays a single unified site regardless of how
+many campaigns exist — only the docs/solvers are split per-operation. Adding an operation =
+add its route(s)/logic to `app.py`, templates, a wordlist if it needs one, a mission entry in
+`MISSIONS` (set `built: True`), and a new `campaignname/opN/` folder with its three files.
 
 ---
 
@@ -107,9 +113,9 @@ internet needed at runtime). The Rainbow Six palette + cinematic keyframes live 
 **This is an unofficial, non-commercial, fan-made educational project. It is not affiliated
 with, endorsed by, or sponsored by Ubisoft Entertainment.**
 
-- **Code & original writing** (`app.py`, template markup/logic, `solvers/`, `CHALLENGER.md`,
-  `DEBRIEF.md`, this README, and everything else authored for this repo) is © the repo owner
-  and released under the [MIT License](LICENSE) — see that file for the full text.
+- **Code & original writing** (`app.py`, template markup/logic, every `solver.py`, every
+  `CHALLENGER.md`/`DEBRIEF.md`, this README, and everything else authored for this repo) is ©
+  the repo owner and released under the [MIT License](LICENSE) — see that file for the full text.
 - **Rainbow Six Siege assets** used for theming — operator names, operator icon artwork
   (`static/img/ops/`), the intro wallpaper (`static/img/intro-wall.jpg`), and the victory video
   clips (`static/img/victory-op*.*`, `static/img/lib/`) — are **not** covered by

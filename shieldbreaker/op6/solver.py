@@ -19,7 +19,7 @@ import sys, os, re, requests
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000").rstrip("/")
 USER = "g.mendel"
-WORDLIST = os.path.join(os.path.dirname(__file__), "..", "wordlists", "op6_passwords.txt")
+WORDLIST = os.path.join(os.path.dirname(__file__), "..", "..", "wordlists", "op6_passwords.txt")
 
 
 def load_wordlist():

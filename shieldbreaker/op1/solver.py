@@ -6,7 +6,7 @@ Usage: python3 op1.py [base_url]   (default http://localhost:8000)"""
 import sys, os, time, requests
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000").rstrip("/")
-WORDLIST = os.path.join(os.path.dirname(__file__), "..", "wordlists", "callsigns.txt")
+WORDLIST = os.path.join(os.path.dirname(__file__), "..", "..", "wordlists", "callsigns.txt")
 
 def main():
     with open(WORDLIST) as f:
