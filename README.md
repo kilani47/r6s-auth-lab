@@ -137,9 +137,10 @@ with, endorsed by, or sponsored by Ubisoft Entertainment.**
   `CHALLENGER.md`/`DEBRIEF.md`, this README, and everything else authored for this repo) is ©
   the repo owner and released under the [MIT License](LICENSE) — see that file for the full text.
 - **Rainbow Six Siege assets** used for theming — operator names, operator icon artwork
-  (`static/img/ops/`), the intro wallpaper (`static/img/intro-wall.jpg`), and the victory video
-  clips (`static/img/victory-op*.*`, `static/img/victory-masq*.*`, `static/img/lib/`) — are
-  **not** covered by that license. They remain the property of **Ubisoft Entertainment** and/or their respective
+  (`static/img/ops/`), map/location wallpapers (`static/img/intro-wall.jpg`,
+  `static/img/masq1-bank-map.jpg`), and the victory video clips (`static/img/victory-op*.*`,
+  `static/img/victory-masq*.*`, `static/img/lib/`) — are **not** covered by that license. They
+  remain the property of **Ubisoft Entertainment** and/or their respective
   rights holders, used here solely for non-commercial educational/thematic purposes. No
   ownership over these assets is claimed, and no challenge is intended to their rights. If you
   are a rights holder and want something removed, open an issue and it'll come down.
