@@ -9,12 +9,12 @@
   <div class="absolute inset-0 bg-[radial-gradient(1200px_700px_at_50%_40%,rgba(7,9,12,.35),rgba(7,9,12,.92))]"></div>
   <div class="absolute inset-0 scanlines pointer-events-none opacity-60"></div>
   <div class="relative px-6 animate-rise-1">
-    <div class="text-[11px] tracking-[.5em] text-atk uppercase mb-2">Rainbow-Corp // Red Team Operation</div>
+    <div class="text-[11px] tracking-[.5em] text-atk uppercase mb-2">Rainbow-Corp // Red Team Program</div>
     <h1 class="m-0 font-extrabold tracking-[.4em] text-glow-atk text-5xl sm:text-7xl
                bg-gradient-to-r from-atk via-white to-def bg-clip-text text-transparent select-none">SHIELDBREAKER</h1>
     <p class="max-w-xl mx-auto mt-4 text-[13px] sm:text-[15px] text-txt/80 leading-relaxed tracking-wide">
-      Six authentication controls stand between you and the crown-jewel accounts.
-      Pick your operator, break each shield, and capture the flag. One breach unlocks the next.
+      Two campaigns, one Command. Pick your operator, break each shield, and capture the flag.
+      One breach unlocks the next.
     </p>
     <button onclick="deploy()"
             class="mt-8 px-10 py-3.5 rounded-lg font-extrabold tracking-[.2em] uppercase text-sm
@@ -33,28 +33,20 @@
     setTimeout(function(){ i.remove(); }, 400); }
 </script>
 
-<div class="max-w-6xl mx-auto px-5 pt-8 pb-16">
-
-  <!-- ===== header ===== -->
-  <header class="text-center mb-2">
-    <h1 class="m-0 font-extrabold tracking-[.5em] text-glow-atk
-               text-4xl sm:text-6xl bg-gradient-to-r from-atk via-white to-def
-               bg-clip-text text-transparent select-none">SHIELDBREAKER</h1>
-    <div class="text-[12px] text-dim tracking-[.35em] mt-1">SELECT &middot; BREACH &middot; CAPTURE THE FLAG</div>
-  </header>
-
-  <!-- ===== progress ===== -->
+{# ============================================================================
+   One campaign section: roster (attackers vs defenders) + mission list.
+   Called once per campaign below with that campaign's own data, so the two
+   campaigns can never see each other's progress or missions. ============== #}
+{% macro campaign_section(attackers, defenders, visible, solved, nxt, more, total_cleared, reset_url) %}
   <div class="flex justify-center items-center gap-5 my-6 text-[12px] tracking-widest text-dim flex-wrap">
     <span>OPERATIONS CLEARED: <b class="text-win">{{ total_cleared }}</b></span>
     {% if nxt %}<span>NEXT: OPERATION {{ '%02d'|format(nxt) }}</span>
     {% else %}<span class="text-win">CAMPAIGN COMPLETE</span>{% endif %}
-    {% if total_cleared %}<a href="/reset-progress"
+    {% if total_cleared %}<a href="{{ reset_url }}"
       class="text-dim border border-line rounded-full px-3 py-[3px] text-[10px] hover:border-red hover:text-red transition">RESET PROGRESS</a>{% endif %}
   </div>
 
-  <!-- ===== attackers vs defenders ===== -->
   <div class="grid md:grid-cols-[1fr_auto_1fr] gap-4 items-stretch">
-    <!-- attackers -->
     <section class="rounded-2xl border border-line bg-panel/60 p-4 shadow-[inset_0_0_44px_rgba(240,162,2,.06)]">
       <h2 class="text-center text-atk text-sm tracking-[.35em] uppercase m-0 mb-3 pb-2.5 border-b border-line">Attackers</h2>
       <div class="grid grid-cols-3 gap-2.5">
@@ -68,12 +60,10 @@
         {% endfor %}
       </div>
     </section>
-    <!-- VS -->
     <div class="flex items-center justify-center">
       <div class="text-5xl font-black text-white -rotate-6
                   [text-shadow:0_0_22px_rgba(255,107,26,.6),0_0_8px_rgba(47,127,224,.6)]">VS</div>
     </div>
-    <!-- defenders -->
     <section class="rounded-2xl border border-line bg-panel/60 p-4 shadow-[inset_0_0_44px_rgba(47,127,224,.08)]">
       <h2 class="text-center text-def text-sm tracking-[.35em] uppercase m-0 mb-3 pb-2.5 border-b border-line">Defenders</h2>
       <div class="grid grid-cols-3 gap-2.5">
@@ -89,7 +79,6 @@
     </section>
   </div>
 
-  <!-- ===== mission roster ===== -->
   <div class="text-center text-[13px] tracking-[.35em] text-dim uppercase my-9">— Mission Roster —</div>
   <div class="flex flex-col gap-4 max-w-3xl mx-auto">
     {% for m in visible %}
@@ -98,7 +87,6 @@
     <div class="rounded-2xl border overflow-hidden bg-gradient-to-br from-[#0e151d] to-[#0a0f15]
                 {% if is_live %}border-atk/50 shadow-[0_0_0_1px_rgba(240,162,2,.12),0_14px_40px_rgba(0,0,0,.5)]
                 {% elif is_cleared %}border-win/40{% else %}border-line{% endif %}">
-      <!-- card head -->
       <div class="flex items-center gap-3 px-4 py-3 border-b border-line
                   bg-[linear-gradient(90deg,rgba(47,127,224,.12),transparent_45%,rgba(240,162,2,.12))]">
         <div class="text-2xl font-black text-white/30 min-w-[40px]">{{ m.code }}</div>
@@ -110,7 +98,6 @@
         {% elif is_live %}<span class="text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] rounded-full bg-atk text-[#0b0e11] animate-pulseglow">● Live</span>
         {% else %}<span class="text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] rounded-full border border-line text-dim">◷ Deploying</span>{% endif %}
       </div>
-      <!-- card body -->
       <div class="grid sm:grid-cols-[1fr_220px] gap-4 p-4">
         <div class="text-[13px] leading-relaxed text-[#aab6c2]">
           <span class="text-atk font-bold tracking-wide">{{ m.topic }}.</span> {{ m.blurb }}
@@ -129,7 +116,6 @@
           </div>
         </div>
       </div>
-      <!-- card action -->
       <div class="px-4 pb-4">
         {% if is_cleared %}
           <a href="{{ m.path if m.built else '#' }}"
@@ -152,6 +138,44 @@
     ▓▓ Further operations classified — clear the current breach to receive new intel ▓▓
   </div>
   {% endif %}
+{% endmacro %}
+
+<div class="max-w-6xl mx-auto px-5 pt-8 pb-16">
+
+  <header class="text-center mb-2">
+    <h1 class="m-0 font-extrabold tracking-[.5em] text-glow-atk
+               text-4xl sm:text-6xl bg-gradient-to-r from-atk via-white to-def
+               bg-clip-text text-transparent select-none">SHIELDBREAKER</h1>
+    <div class="text-[12px] text-dim tracking-[.35em] mt-1">SELECT &middot; BREACH &middot; CAPTURE THE FLAG</div>
+  </header>
+
+  <!-- ============================== CAMPAIGN 1 — SHIELDBREAKER ============================== -->
+  <div class="mt-10 flex items-center gap-3 max-w-3xl mx-auto">
+    <div class="h-px flex-1 bg-line"></div>
+    <div class="text-center px-2">
+      <div class="text-atk text-lg tracking-[.3em] font-extrabold uppercase">🛡️ Operation Shieldbreaker</div>
+      <div class="text-[10px] text-dim tracking-[.25em] uppercase mt-0.5">WSTG-ATHN &middot; Authentication Testing</div>
+    </div>
+    <div class="h-px flex-1 bg-line"></div>
+  </div>
+
+  {{ campaign_section(attackers, defenders, visible, solved, nxt, more, total_cleared, "/reset-progress") }}
+
+  <!-- ============================== CAMPAIGN 2 — MASQUERADE ============================== -->
+  <div class="mt-16 flex items-center gap-3 max-w-3xl mx-auto">
+    <div class="h-px flex-1 bg-line"></div>
+    <div class="text-center px-2">
+      <div class="text-def text-lg tracking-[.3em] font-extrabold uppercase">🎭 Operation Masquerade</div>
+      <div class="text-[10px] text-dim tracking-[.25em] uppercase mt-0.5">WSTG-SESS &middot; Sessions, Tokens, OAuth, 2FA</div>
+    </div>
+    <div class="h-px flex-1 bg-line"></div>
+  </div>
+  <div class="max-w-3xl mx-auto mt-3 text-center text-[11px] text-dim leading-relaxed">
+    A separate campaign — clearing Shieldbreaker is <b class="text-txt">not required</b>. Same
+    Command, same flag format, different attack surface: what happens <i>after</i> login.
+  </div>
+
+  {{ campaign_section(masq_attackers, masq_defenders, masq_visible, masq_solved, masq_nxt, masq_more, masq_total_cleared, "/masq-reset-progress") }}
 
   <footer class="mt-10 text-center text-[11px] text-dim tracking-wide">
     Rainbow Six Siege © Ubisoft &middot; operator icons via r6operators &middot; personal educational lab

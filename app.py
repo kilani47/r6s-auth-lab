@@ -11,6 +11,7 @@ DELIBERATELY VULNERABLE per-mission. Local educational lab only.
 """
 import time
 import random
+import base64
 import hashlib
 import secrets
 from flask import Flask, request, render_template, session, redirect, url_for, make_response, jsonify
@@ -93,6 +94,79 @@ def next_unsolved():
     return None  # campaign complete
 
 
+# ============================================================ OPERATION MASQUERADE
+# A second, INDEPENDENT campaign -- does not require clearing SHIELDBREAKER, and its
+# own progress is tracked separately (session["masq_solved"], not "solved"). Covers
+# the post-authentication topics: session management, tokens/JWT, OAuth, 2FA.
+MASQUERADE_MISSIONS = [
+    {"id": 1, "code": "01", "name": "The Teller's Trust",
+     "wstg": "WSTG-SESS-01", "topic": "Cookie Tampering",
+     "attacker": {"slug": "iana", "name": "Iana"},
+     "defender": {"slug": "alibi", "name": "Alibi"},
+     "blurb": "The bank issues a session cookie and trusts whatever it says. Decode it, "
+              "learn its shape, and forge a new identity the vault has to believe.",
+     "built": True, "path": "/masquerade/op1/"},
+    {"id": 2, "code": "02", "name": "Stolen Keys",
+     "wstg": "WSTG-SESS-02/03", "topic": "Session Hijacking & Fixation",
+     "attacker": {"slug": "zero", "name": "Zero"},
+     "defender": {"slug": "vigil", "name": "Vigil"},
+     "blurb": "A session ID that never changes is a key that never gets recut.",
+     "built": False, "path": "#"},
+    {"id": 3, "code": "03", "name": "One Click",
+     "wstg": "WSTG-SESS-05", "topic": "CSRF",
+     "attacker": {"slug": "ying", "name": "Ying"},
+     "defender": {"slug": "melusi", "name": "Melusi"},
+     "blurb": "The browser sends the cookie automatically. That's the whole attack.",
+     "built": False, "path": "#"},
+    {"id": 4, "code": "04", "name": "Signed, Not Sealed",
+     "wstg": "Token-Based Auth", "topic": "JWT Authentication",
+     "attacker": {"slug": "kali", "name": "Kali"},
+     "defender": {"slug": "echo", "name": "Echo"},
+     "blurb": "A token's signature only matters if something actually checks it.",
+     "built": False, "path": "#"},
+    {"id": 5, "code": "05", "name": "Exposed Claim",
+     "wstg": "Token-Based Auth", "topic": "JWT Claims",
+     "attacker": {"slug": "jackal", "name": "Jackal"},
+     "defender": {"slug": "pulse", "name": "Pulse"},
+     "blurb": "Everything inside a JWT is readable. Nothing inside it is private.",
+     "built": False, "path": "#"},
+    {"id": 6, "code": "06", "name": "Delegated Trust",
+     "wstg": "OAuth", "topic": "Attacking OAuth",
+     "attacker": {"slug": "hibana", "name": "Hibana"},
+     "defender": {"slug": "bandit", "name": "Bandit"},
+     "blurb": "OAuth lets one app vouch for you to another. Vouching can be forged.",
+     "built": False, "path": "#"},
+    {"id": 7, "code": "07", "name": "Unlimited Attempts",
+     "wstg": "2FA", "topic": "Bypassing 2FA",
+     "attacker": {"slug": "ash", "name": "Ash"},
+     "defender": {"slug": "warden", "name": "Warden"},
+     "blurb": "A second factor only helps if it has the same protections as the first.",
+     "built": False, "path": "#"},
+]
+
+MASQ_ATTACKERS = [m["attacker"] for m in MASQUERADE_MISSIONS]
+MASQ_DEFENDERS = [m["defender"] for m in MASQUERADE_MISSIONS]
+
+
+def masq_solved_set():
+    return set(session.get("masq_solved", []))
+
+
+def mark_masq_solved(mid):
+    s = masq_solved_set()
+    s.add(mid)
+    session["masq_solved"] = sorted(s)
+    session.modified = True
+
+
+def masq_next_unsolved():
+    s = masq_solved_set()
+    for m in MASQUERADE_MISSIONS:
+        if m["id"] not in s:
+            return m["id"]
+    return None  # campaign complete
+
+
 # ================================================================ HUB / COMMAND
 @app.route("/")
 def hub():
@@ -101,14 +175,30 @@ def hub():
     # reveal cleared missions + the single next one; hide everything beyond.
     visible = [m for m in MISSIONS if m["id"] in s or m["id"] == nxt]
     more = any(m["id"] not in s and m["id"] != nxt for m in MISSIONS)
+
+    # Masquerade campaign -- fully independent of Shieldbreaker's progress above.
+    ms = masq_solved_set()
+    mnxt = masq_next_unsolved()
+    masq_visible = [m for m in MASQUERADE_MISSIONS if m["id"] in ms or m["id"] == mnxt]
+    masq_more = any(m["id"] not in ms and m["id"] != mnxt for m in MASQUERADE_MISSIONS)
+
     return render_template("hub.html", attackers=ATTACKERS, defenders=DEFENDERS,
                            visible=visible, solved=s, nxt=nxt, more=more,
-                           total_cleared=len(s))
+                           total_cleared=len(s),
+                           masq_attackers=MASQ_ATTACKERS, masq_defenders=MASQ_DEFENDERS,
+                           masq_visible=masq_visible, masq_solved=ms, masq_nxt=mnxt,
+                           masq_more=masq_more, masq_total_cleared=len(ms))
 
 
 @app.route("/reset-progress")
 def reset_progress():
     session.pop("solved", None)
+    return redirect(url_for("hub"))
+
+
+@app.route("/masq-reset-progress")
+def masq_reset_progress():
+    session.pop("masq_solved", None)
     return redirect(url_for("hub"))
 
 
@@ -505,6 +595,80 @@ def op6_console():
         return redirect(url_for("op6_index"))
     mark_solved(6)                                  # reaching the console clears Op06 -- campaign complete
     return render_template("op6_console.html", flag=OP6_FLAG, user=OP6_TARGET_DISPLAY)
+
+
+# ====================================== MASQUERADE OP 01 — session schema / cookie tampering
+# WSTG-SESS-01. The bank's session cookie is a home-rolled, unsigned token: just
+# base64("username:role:checksum"). The "checksum" LOOKS like an integrity control (it's
+# computed from a secret-looking salt) but the server never recomputes or compares it on
+# read -- it just trusts whatever username/role the decoded cookie claims. Change "customer"
+# to "vault_manager", re-encode, replay -- the stale/wrong checksum is never even inspected.
+# This is deliberately the FIRST session-management op: one clean lesson (does the server
+# independently validate, or trust the cookie?), same core question as every future op in
+# this campaign will ask about a different token format (JWT, OAuth, OTP).
+#
+# Secondary/bonus finding (observe-and-report, not required for the flag): the cookie is
+# set with none of WSTG-SESS-01's checklist flags -- no HttpOnly, no Secure, no SameSite.
+MASQ1_USER = "j.doe"
+MASQ1_PASSWORD = "Customer2024!"          # given directly -- this op is not about cracking it
+MASQ1_SALT = "RC-BANK-2024"               # cosmetic; the "checksum" below is never re-verified
+MASQ1_TARGET_ROLE = "vault_manager"
+MASQ1_FLAG = "R6S{iana_forged_vault_manager_role}"
+
+
+def masq1_make_cookie(username, role):
+    checksum = hashlib.md5(f"{username}:{role}:{MASQ1_SALT}".encode()).hexdigest()[:8]
+    raw = f"{username}:{role}:{checksum}"
+    return base64.b64encode(raw.encode()).decode()
+
+
+def masq1_decode_cookie(value):
+    # VULN: parses the structure, but never recomputes/compares the checksum against
+    # what it SHOULD be for (username, role) -- so a stale or simply wrong checksum
+    # from a tampered cookie is accepted exactly the same as a freshly-issued one.
+    try:
+        raw = base64.b64decode(value).decode()
+        username, role, checksum = raw.split(":")
+        return {"username": username, "role": role, "checksum": checksum}
+    except Exception:
+        return None
+
+
+@app.route("/masquerade/op1/")
+def masq1_index():
+    return render_template("masq1_login.html")
+
+
+@app.route("/masquerade/op1/login", methods=["POST"])
+def masq1_login():
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if username != MASQ1_USER or password != MASQ1_PASSWORD:
+        return render_template("masq1_login.html", error="Invalid username or password."), 401
+    resp = make_response(redirect(url_for("masq1_account")))
+    # VULN: no HttpOnly / Secure / SameSite -- a real secondary finding on its own.
+    resp.set_cookie("bank_session", masq1_make_cookie(username, "customer"))
+    return resp
+
+
+@app.route("/masquerade/op1/account")
+def masq1_account():
+    data = masq1_decode_cookie(request.cookies.get("bank_session", ""))
+    if not data:
+        return redirect(url_for("masq1_index"))
+    return render_template("masq1_account.html", user=data["username"], role=data["role"])
+
+
+@app.route("/masquerade/op1/vault")
+def masq1_vault():
+    data = masq1_decode_cookie(request.cookies.get("bank_session", ""))
+    if not data:
+        return redirect(url_for("masq1_index"))
+    if data["role"] != MASQ1_TARGET_ROLE:
+        return render_template("masq1_vault.html", granted=False, role=data["role"],
+                               required=MASQ1_TARGET_ROLE), 403
+    mark_masq_solved(1)                              # reaching the vault clears Masquerade Op01
+    return render_template("masq1_vault.html", granted=True, flag=MASQ1_FLAG)
 
 
 @app.after_request

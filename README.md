@@ -4,20 +4,16 @@
 
 ![Command — intro splash and mission board](docs/hero.gif)
 
-A single-site, layered authentication CTF for practising the **OWASP WSTG Authentication**
-tests. One website, six operations. **Missions unlock one at a time** — clear the current
-breach and the next operation appears at Command; everything beyond it stays classified.
+A single-site red-team platform for practising the **OWASP WSTG**, built as two independent,
+Rainbow Six Siege-themed CTF campaigns under one Command hub. **Missions unlock one at a time
+within each campaign** — clear the current breach and the next operation appears; everything
+beyond it stays classified. The two campaigns don't gate each other: play either first.
 
 > Unofficial fan project, not affiliated with Ubisoft. Code is MIT-licensed; Rainbow Six Siege
 > assets used for theming are not — see [Legal / Disclaimer](#️-legal--disclaimer) below.
 
-Themed on Rainbow Six Siege, with **faction-accurate rosters** — you play a real R6
-**attacker** breaching a real R6 **defender** that represents the app's security control.
-
-| Side | Operators |
-|------|-----------|
-| **Attackers** (you play) | IQ · Sledge · Dokkaebi · Thermite · Blitz · Nomad |
-| **Defenders** (the controls) | Mute · Castle · Clash · Oryx · Aruni · Kaid |
+Faction-accurate rosters throughout — you always play a real R6 **attacker** breaching a real R6
+**defender** that represents the app's security control.
 
 ---
 
@@ -27,13 +23,16 @@ Each operation has its own briefing + debrief, grouped by campaign folder:
 
 | I want to... | Read |
 |---|---|
-| **Play it** as a real blackbox challenge | [`shieldbreaker/README.md`](shieldbreaker/README.md) — mission index, rules of engagement, links to every operation's `CHALLENGER.md`. **No spoilers.** |
+| **Play Shieldbreaker** as a blackbox challenge | [`shieldbreaker/README.md`](shieldbreaker/README.md) — mission index, rules of engagement, links to every operation's `CHALLENGER.md`. **No spoilers.** |
+| **Play Masquerade** as a blackbox challenge | [`masquerade/README.md`](masquerade/README.md) — same structure, session/token/OAuth/2FA topics. **No spoilers.** |
 | **Check my work**, or understand *why* it worked after solving | Each operation's own `DEBRIEF.md` (e.g. [`shieldbreaker/op1/DEBRIEF.md`](shieldbreaker/op1/DEBRIEF.md)) — the lesson in plain language, code walkthrough, self-check, full answer key. Spoilers. |
 | Understand how it's **built** | keep reading below |
 
 ---
 
-## 🎯 Campaign
+## 🎯 Campaigns
+
+### 🛡️ Operation Shieldbreaker — WSTG-ATHN / IDNT (Authentication Testing)
 
 | # | Operation | Matchup | WSTG | Attack |
 |---|-----------|---------|------|--------|
@@ -44,9 +43,25 @@ Each operation has its own briefing + debrief, grouped by campaign folder:
 | 05 | Ghost in the Panel | **Blitz** ⚔ **Aruni** | ATHN-04 | Auth-schema bypass |
 | 06 | Back Door | **Nomad** ⚔ **Kaid** | ATHN-08 | Alternative-channel auth |
 
-> **All six operations ship.** The campaign is complete — each reveals in the UI (and has its
-> own `CHALLENGER.md` / `DEBRIEF.md` under [`shieldbreaker/`](shieldbreaker/)) the moment the
-> previous one is cleared.
+**Complete** — all six operations ship. Docs under [`shieldbreaker/`](shieldbreaker/).
+
+### 🎭 Operation Masquerade — WSTG-SESS / Tokens / OAuth / 2FA (what happens *after* login)
+
+| # | Operation | Matchup | Topic |
+|---|-----------|---------|-------|
+| 01 | The Teller's Trust | **Iana** ⚔ **Alibi** | WSTG-SESS-01 · Cookie tampering |
+| 02 | Stolen Keys | Zero ⚔ Vigil | Session hijacking & fixation |
+| 03 | One Click | Ying ⚔ Melusi | CSRF |
+| 04 | Signed, Not Sealed | Kali ⚔ Echo | JWT authentication |
+| 05 | Exposed Claim | Jackal ⚔ Pulse | JWT claims |
+| 06 | Delegated Trust | Hibana ⚔ Bandit | Attacking OAuth |
+| 07 | Unlimited Attempts | Ash ⚔ Warden | Bypassing 2FA |
+
+**In progress** — Operation 01 ships today; the rest reveal on Command as they're built. Docs
+under [`masquerade/`](masquerade/).
+
+Both campaigns unlock one operation at a time and reveal the next the moment the current one is
+cleared — same mechanic, independent progress trackers.
 
 ---
 
@@ -60,31 +75,36 @@ or without Docker:
 pip install -r requirements.txt && python3 app.py
 ```
 
-The landing page (`/`) is **Command** — the operator-select and mission board. Progress is
-tracked in your browser session; **Reset Progress** clears it.
+The landing page (`/`) is **Command** — both campaigns' operator rosters and mission boards,
+stacked on one page. Progress for each campaign is tracked independently in your browser
+session; each has its own **Reset Progress** link.
 
 ---
 
 ## 🗂️ Repo layout
 
 ```
-app.py                 # all mission routes + Command/hub logic (session-based unlock)
-templates/              base.html (Tailwind theme) + hub.html + op{1..6}_*.html
+app.py                 # BOTH campaigns' routes + Command/hub logic (independent session unlock)
+templates/              base.html (Tailwind theme) + hub.html (renders both campaigns) + op*.html
 static/vendor/          tailwind.js (vendored — offline, no CDN needed)
-static/img/ops/         real operator icons (see Assets below)
-static/img/             victory clips (per-op) — victory-op<N>.gif or .webp
+static/img/ops/         real operator icons for every operator across both campaigns
+static/img/             victory clips (per-op) — victory-op<N>.gif/.webp, victory-masq<N>.*
 static/img/intro-wall.jpg  Command's intro splash wallpaper
 wordlists/               recon wordlists handed to the player (no answers)
-shieldbreaker/           campaign docs, one folder per operation:
+shieldbreaker/           WSTG-ATHN campaign docs, one folder per operation:
   README.md                mission index + rules of engagement
   op1/ .. op6/              each has CHALLENGER.md (no spoilers), DEBRIEF.md (spoilers),
                             and solver.py (reference/instructor solver)
+masquerade/              WSTG-SESS/Token/OAuth/2FA campaign docs, same per-op structure:
+  README.md                mission index + rules of engagement
+  op1/ ..                  CHALLENGER.md, DEBRIEF.md, solver.py — grows as more ship
 ```
 
-The Flask app itself (`app.py`, `templates/`) stays a single unified site regardless of how
-many campaigns exist — only the docs/solvers are split per-operation. Adding an operation =
-add its route(s)/logic to `app.py`, templates, a wordlist if it needs one, a mission entry in
-`MISSIONS` (set `built: True`), and a new `campaignname/opN/` folder with its three files.
+The Flask app itself (`app.py`, `templates/`) stays a **single unified site** regardless of how
+many campaigns exist — only the docs/solvers are split per-operation, per-campaign. Adding an
+operation = add its route(s)/logic to `app.py`, templates, a wordlist if it needs one, a
+mission entry in the campaign's `MISSIONS` list (set `built: True`), and a new
+`campaignname/opN/` folder with its `CHALLENGER.md` / `DEBRIEF.md` / `solver.py`.
 
 ---
 
@@ -118,8 +138,8 @@ with, endorsed by, or sponsored by Ubisoft Entertainment.**
   the repo owner and released under the [MIT License](LICENSE) — see that file for the full text.
 - **Rainbow Six Siege assets** used for theming — operator names, operator icon artwork
   (`static/img/ops/`), the intro wallpaper (`static/img/intro-wall.jpg`), and the victory video
-  clips (`static/img/victory-op*.*`, `static/img/lib/`) — are **not** covered by
-  that license. They remain the property of **Ubisoft Entertainment** and/or their respective
+  clips (`static/img/victory-op*.*`, `static/img/victory-masq*.*`, `static/img/lib/`) — are
+  **not** covered by that license. They remain the property of **Ubisoft Entertainment** and/or their respective
   rights holders, used here solely for non-commercial educational/thematic purposes. No
   ownership over these assets is claimed, and no challenge is intended to their rights. If you
   are a rights holder and want something removed, open an issue and it'll come down.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Downloads the official-style operator icons used across the SHIELDBREAKER campaign.
-# Source: r6operators (community package of Ubisoft-derived operator icons) via jsDelivr.
-# Personal/educational lab use. Re-run any time to refresh assets.
+# Downloads the official-style operator icons used across BOTH campaigns (Shieldbreaker
+# and Masquerade). Source: r6operators (community package of Ubisoft-derived operator
+# icons) via jsDelivr. Personal/educational lab use. Re-run any time to refresh assets.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DEST="$HERE/../static/img/ops"
@@ -9,7 +9,10 @@ VER="2.12.0"
 BASE="https://cdn.jsdelivr.net/npm/r6operators@${VER}/dist/icons"
 mkdir -p "$DEST"
 
+# Shieldbreaker (WSTG-ATHN)
 OPS=(iq sledge dokkaebi thermite blitz nomad mute castle clash oryx aruni kaid)
+# Masquerade (WSTG-SESS / Token / OAuth / 2FA) -- built + roadmap placeholders
+OPS+=(iana alibi zero vigil ying melusi kali echo jackal pulse hibana bandit ash warden)
 
 echo "[*] Fetching ${#OPS[@]} operator icons -> $DEST"
 for op in "${OPS[@]}"; do
@@ -25,10 +28,11 @@ cat <<'NOTE'
 
 --- OPTIONAL: your own wallpaper / victory clips ------------------------------
 The UI will automatically use these if you drop them in:
-    static/img/intro-wall.jpg      full-bleed wallpaper on Command's intro splash
-    static/img/victory-op<N>.gif   (or .webp) plays on Operation N's breach overlay
-Grab them from any wallpaper/clip site you like and name them as above -- check
-templates/op<N>_console.html for the exact filename/extension each op expects.
+    static/img/intro-wall.jpg        full-bleed wallpaper on Command's intro splash
+    static/img/victory-op<N>.gif     (or .webp) Shieldbreaker Operation N breach overlay
+    static/img/victory-masq<N>.gif   (or .webp) Masquerade Operation N breach overlay
+Grab them from any wallpaper/clip site you like and name them as above -- check each
+op's console/vault template for the exact filename/extension it expects.
 If absent, a built-in CSS icon-slam animation is used instead. Nothing breaks.
 --------------------------------------------------------------------------------
 NOTE
