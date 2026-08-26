@@ -6,7 +6,12 @@
 
 **A session identifier that survives the moment of authentication unchanged was never actually
 issued by login at all — it was just adopted, which means anyone who can hand a target an
-identifier *before* they log in can walk in on it *after* they do.**
+identifier *before* they log in can walk in on their account *after* they do, without ever
+knowing, guessing, or needing the target's password.**
+
+That last clause is the part it's easy to lose track of while playing this mission solo: the
+credentials you type in Step 3 below are the *victim's*, used legitimately, by (a simulated)
+them. The attacker's own entry — Step 4 — never touches a credential at all.
 
 Operation 01 asked whether the server verifies what's *inside* a token. This operation asks a
 narrower, sneakier question: does the server even control *which* token gets trusted in the
@@ -95,16 +100,27 @@ doesn't rotate the identifier" is a finding. "I can pre-select the identifier th
 authenticated" is the *impact* of that finding — the part that makes it worth reporting instead
 of just noting.
 
-### Step 4 — Confirm the app can tell the difference, and that you crossed it
+### Step 4 — Come back as the attacker, with *nothing but the identifier*
 
-Reaching the reservations page fails outright pre-auth, and succeeds — but *without* proof of
-anything — if you're authenticated on an identifier the server minted itself. It only confirms
-the actual vulnerability when the identifier that ends up authenticated is one that
-demonstrably originated on your side of the connection, before login ever happened.
+This is the step that's easy to blur into Step 3 and, in doing so, miss the entire point. Log in
+once (Step 3), then throw away every bit of state that request produced — a fresh
+`requests.Session()`, a second `curl`, an incognito tab — and present *only* the identifier from
+Step 3 to `/reservations`. No username. No password. No login request at all in this step.
 
-*What to pay attention to:* this app is deliberately built so that "I'm logged in" alone proves
-nothing about fixation — plenty of totally secure apps let you log in fine. The finding is
-specifically about *which* identifier ends up trusted, not whether login works.
+*What to pay attention to:* reaching the reservations page from the *same* browser you just
+logged in with proves nothing — of course a session you're logged into stays logged in. What
+proves the vulnerability is that a request carrying **zero credentials** still reaches an
+authenticated account, purely because it happened to present an identifier that a login
+elsewhere had already blessed. That's the actual capability a real attacker gets: access to the
+victim's account without ever knowing, guessing, or needing the victim's password.
+
+*What to notice about the app's own responses:* reaching the reservations page fails outright
+pre-auth, and succeeds — but *without* proof of anything — if you're authenticated on an
+identifier the server minted itself. It only confirms the vulnerability when the identifier that
+ends up authenticated is one that demonstrably originated on your side of the connection, before
+login ever happened. "I'm logged in" alone proves nothing about fixation — plenty of totally
+secure apps let you log in fine. The finding is about *which* identifier ends up trusted, and
+whether *reaching* that trust required a credential at all.
 
 ### Step 5 — The second, smaller finding: it's not even cookie-only
 
@@ -207,6 +223,9 @@ they don't have.
    the vulnerability — what's the extra step that turns it into a confirmed finding?
 3. What's the single missing server-side action that would close this bug completely, even with
    every other line of the app unchanged?
+3b. Every path to the flag in this mission still involves *someone* typing the real password
+    at some point. So what does the attacker actually get away with — what's the one request in
+    the whole exploit that reaches an authenticated account with no credential in it at all?
 4. Why is the URL-parameter acceptance path worth reporting separately from the cookie-based
    fixation, even though both stem from the same root cause?
 5. Why does this challenge need to know whether a session identifier was genuinely
@@ -236,7 +255,9 @@ curl -s -o /dev/null -b "guest_sid=$SID" http://localhost:8000/masquerade/op2/
 curl -s -o /dev/null -b "guest_sid=$SID" -X POST http://localhost:8000/masquerade/op2/login \
   -d 'username=guest.stay&password=Meridian2024!'
 
-# 3) replay the planted id -- it's now authenticated
+# 3) THE PROOF: a brand-new curl invocation, no cookie jar, no prior requests at all --
+#    replay ONLY the planted id. No -d, no username, no password. This is the whole attack:
+#    an authenticated account reached with zero credentials submitted, in this process.
 curl -s -b "guest_sid=$SID" http://localhost:8000/masquerade/op2/reservations | grep -o 'R6S{[^}]*}'
 
 # secondary finding: same trick, via URL parameter instead of a cookie at all
