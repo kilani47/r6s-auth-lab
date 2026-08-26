@@ -110,7 +110,7 @@ MASQUERADE_MISSIONS = [
      "wstg": "WSTG-SESS-03", "topic": "Session Fixation",
      "attacker": {"slug": "zero", "name": "Zero"},
      "defender": {"slug": "vigil", "name": "Vigil"},
-     "blurb": "The resort hands out a key card before you've even checked in — and never "
+     "blurb": "The hotel hands out a key card before you've even checked in — and never "
               "recuts it at the front desk. Plant your own card number, check in, and the "
               "card you planted is the one that ends up authenticated.",
      "built": True, "path": "/masquerade/op2/"},
@@ -674,9 +674,9 @@ def masq1_vault():
 
 
 # ====================================== MASQUERADE OP 02 — session fixation (WSTG-SESS-03)
-# The resort's "key card" (session cookie) is created the moment ANYONE visits the portal --
+# The hotel's "key card" (session cookie) is created the moment ANYONE visits the portal --
 # before login, before any identity is known -- and the server accepts a client-SUPPLIED
-# value just as happily as one it generates itself, via either the cookie or a `resort_sid`
+# value just as happily as one it generates itself, via either the cookie or a `guest_sid`
 # URL parameter (WSTG-SESS-03's own checklist flags URL-carried session IDs separately).
 # The core bug: logging in NEVER issues a new key card. Whatever card (sid) was already
 # attached to the request when the login form is submitted is the exact same card that
@@ -690,17 +690,17 @@ def masq1_vault():
 # the flag requires being authenticated under a "client"-origin sid: proof you planted the
 # key card yourself, before ever authenticating, and the app never rotated it away from you.
 MASQ2_USER = "guest.stay"
-MASQ2_PASSWORD = "Coastline2024!"        # given directly -- this op is not about cracking it
+MASQ2_PASSWORD = "Meridian2024!"          # given directly -- this op is not about cracking it
 MASQ2_FLAG = "R6S{zero_planted_the_key_card_before_checkin}"
 
 MASQ2_SESSIONS = {}    # sid -> {"authenticated": bool, "origin": "server" | "client"}
 
 
 def masq2_get_session():
-    """Reuse whatever sid the request already carries (cookie OR ?resort_sid=), tracking
+    """Reuse whatever sid the request already carries (cookie OR ?guest_sid=), tracking
     who first proposed that value. Only mint a fresh, server-owned sid if truly none was
     supplied. VULN: never rotates the sid on login -- see masq2_login below."""
-    incoming = request.cookies.get("resort_sid") or request.args.get("resort_sid")
+    incoming = request.cookies.get("guest_sid") or request.args.get("guest_sid")
     if incoming:
         if incoming not in MASQ2_SESSIONS:
             MASQ2_SESSIONS[incoming] = {"authenticated": False, "origin": "client"}
@@ -714,7 +714,7 @@ def masq2_get_session():
 def masq2_index():
     sid, _ = masq2_get_session()
     resp = make_response(render_template("masq2_login.html"))
-    resp.set_cookie("resort_sid", sid)
+    resp.set_cookie("guest_sid", sid)
     return resp
 
 
@@ -726,11 +726,11 @@ def masq2_login():
     if username != MASQ2_USER or password != MASQ2_PASSWORD:
         resp = make_response(render_template("masq2_login.html",
             error="Invalid username or password."), 401)
-        resp.set_cookie("resort_sid", sid)
+        resp.set_cookie("guest_sid", sid)
         return resp
     sess["authenticated"] = True             # VULN: flips the flag on the SAME sid -- no rotation
     resp = make_response(redirect(url_for("masq2_reservations")))
-    resp.set_cookie("resort_sid", sid)
+    resp.set_cookie("guest_sid", sid)
     return resp
 
 
@@ -748,7 +748,7 @@ def masq2_reservations():
         mark_masq_solved(2)                  # reaching this with a client-planted sid clears Op02
         resp = make_response(render_template("masq2_reservations.html",
             authed=True, fixated=True, flag=MASQ2_FLAG))
-    resp.set_cookie("resort_sid", sid)
+    resp.set_cookie("guest_sid", sid)
     return resp
 
 

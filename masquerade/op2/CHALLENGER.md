@@ -11,7 +11,7 @@ your work, or want the lesson spelled out after solving.
 
 ## Mission
 
-**Coastline Resort** runs a guest portal. Unlike Operation 01, this mission isn't about
+**Meridian Tower** runs a guest portal for the hotel occupying its upper floors. Unlike Operation 01, this mission isn't about
 reading or tampering with what's *inside* a session token — it's about a much simpler
 question:
 
@@ -24,7 +24,7 @@ cracking a password. It's about *timing*.
 
 ```
 Guest ID: guest.stay
-Password: Coastline2024!
+Password: Meridian2024!
 ```
 
 ### Objectives
