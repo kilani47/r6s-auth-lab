@@ -128,15 +128,15 @@ def masq2_get_session():
     incoming = request.cookies.get("guest_sid") or request.args.get("guest_sid")
     if incoming:
         if incoming not in MASQ2_SESSIONS:
-            MASQ2_SESSIONS[incoming] = {"authenticated": False, "origin": "client"}
+            MASQ2_SESSIONS[incoming] = {"authenticated": False}
         return incoming, MASQ2_SESSIONS[incoming]
-    sid = secrets.token_hex(8)
-    MASQ2_SESSIONS[sid] = {"authenticated": False, "origin": "server"}
+    sid = masq2_make_sid()
+    MASQ2_SESSIONS[sid] = {"authenticated": False}
     return sid, MASQ2_SESSIONS[sid]
 ```
 
 Any identifier the client presents — whether it was ever issued by this server or not — is
-accepted and tracked. A brand-new, server-random identifier is only minted as a last resort,
+accepted and tracked. A brand-new, server-issued identifier is only minted as a last resort,
 when the request carries *nothing* at all.
 
 **2. Login flips a flag on whatever identifier was already in play — it never mints a new one**
@@ -176,17 +176,26 @@ def masq2_reservations():
     sid, sess = masq2_get_session()
     if not sess["authenticated"]:
         ...                                            # 401 -- not checked in
-    elif sess["origin"] != "client":
+    elif masq2_is_server_issued(sid):
         ...                                            # authed, but proves nothing
     else:
         mark_masq_solved(2)                             # reaching this with a client-planted sid clears Op02
         ...
 ```
 
-`origin` is bookkeeping that exists purely to make this challenge gradeable — it records
-whether *this* identifier was first proposed by the client or minted by the server. It's not
-something a real attacker gets to see; it's the app's own ground truth for "was this a fixation
-exploit, or just an ordinary login," used only to decide when to award the flag.
+`masq2_is_server_issued()` exists purely to make this challenge gradeable — it's the app's own
+ground truth for "was this a fixation exploit, or just an ordinary login," used only to decide
+when to award the flag. It isn't a plain `dict` lookup, on purpose: every server-minted sid is
+signed with a fixed key (`masq2_sign()`/`masq2_make_sid()`, further up in `app.py`), and the
+check re-verifies that signature on *every* request rather than remembering a one-time
+first-sight classification. An in-memory "have I seen this sid before" dict would forget
+everything the instant the process restarts — and Docker restarts this app automatically on any
+crash — while a visitor's cookie survives that restart untouched. That combination used to turn
+a perfectly ordinary login, made right after a restart with an old-but-legitimate cookie, into a
+false positive that handed out the flag for nothing. Signing makes the check stateless: a
+genuinely server-issued sid verifies forever regardless of how many times the app has restarted
+since, and an attacker-invented one never verifies at all, because forging it requires a key
+they don't have.
 
 ---
 
@@ -200,8 +209,9 @@ exploit, or just an ordinary login," used only to decide when to award the flag.
    every other line of the app unchanged?
 4. Why is the URL-parameter acceptance path worth reporting separately from the cookie-based
    fixation, even though both stem from the same root cause?
-5. Why does this challenge track whether a session identifier's `origin` was `"server"` or
-   `"client"` — what real-world signal is that standing in for?
+5. Why does this challenge need to know whether a session identifier was genuinely
+   server-issued — what real-world signal is that standing in for? And why does that check use
+   a signature instead of just remembering which sids it's seen before?
 
 ---
 

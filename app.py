@@ -13,6 +13,7 @@ import time
 import random
 import base64
 import hashlib
+import hmac
 import secrets
 from flask import Flask, request, render_template, session, redirect, url_for, make_response, jsonify
 
@@ -684,29 +685,52 @@ def masq1_vault():
 # hand a victim a pre-chosen card number and wait for the victim to check in with it.
 #
 # To make this provable (not just "did I log in ok", which fixation doesn't visibly break),
-# every session tracks its own ORIGIN: "server" (nobody supplied one, the app generated it
-# itself -- completely normal) vs "client" (somebody -- cookie or URL -- handed the app a
-# sid it had never seen before, and the app just accepted it as a fresh session). Reaching
-# the flag requires being authenticated under a "client"-origin sid: proof you planted the
-# key card yourself, before ever authenticating, and the app never rotated it away from you.
+# every server-minted sid is signed with a fixed key (masq2_sign/masq2_is_server_issued
+# below). Reaching the flag requires being authenticated under a sid whose signature does
+# NOT verify: proof you planted the key card yourself, before ever authenticating, and the
+# app never rotated it away from you.
+#
+# Signed rather than just "remembered": an earlier version tracked origin by whether a sid
+# was already a key in an in-memory dict the first time it was seen. That breaks the moment
+# the process restarts (Docker's restart: unless-stopped will do this on any crash) -- the
+# dict resets to empty, but a visitor's browser cookie survives the restart untouched, so
+# their very next ordinary login looked identical to a fixation attack and falsely handed
+# out the flag. Signing makes the check stateless: a genuinely server-issued sid verifies
+# forever, no matter how many times the app has restarted since it was minted, while an
+# attacker-invented one never verifies at all, since they don't have the signing key.
 MASQ2_USER = "guest.stay"
 MASQ2_PASSWORD = "Meridian2024!"          # given directly -- this op is not about cracking it
 MASQ2_FLAG = "R6S{zero_planted_the_key_card_before_checkin}"
+MASQ2_SIGNING_KEY = "meridian-front-desk-2024"   # fixed on purpose -- must survive restarts
 
-MASQ2_SESSIONS = {}    # sid -> {"authenticated": bool, "origin": "server" | "client"}
+MASQ2_SESSIONS = {}    # sid -> {"authenticated": bool}
+
+
+def masq2_sign(raw):
+    return hmac.new(MASQ2_SIGNING_KEY.encode(), raw.encode(), hashlib.sha256).hexdigest()[:16]
+
+
+def masq2_make_sid():
+    raw = secrets.token_hex(8)
+    return f"{raw}.{masq2_sign(raw)}"
+
+
+def masq2_is_server_issued(sid):
+    raw, sep, sig = sid.rpartition(".")
+    return bool(sep) and hmac.compare_digest(masq2_sign(raw), sig)
 
 
 def masq2_get_session():
-    """Reuse whatever sid the request already carries (cookie OR ?guest_sid=), tracking
-    who first proposed that value. Only mint a fresh, server-owned sid if truly none was
-    supplied. VULN: never rotates the sid on login -- see masq2_login below."""
+    """Reuse whatever sid the request already carries (cookie OR ?guest_sid=). Only mint a
+    fresh, server-signed sid if truly none was supplied. VULN: never rotates the sid on
+    login -- see masq2_login below."""
     incoming = request.cookies.get("guest_sid") or request.args.get("guest_sid")
     if incoming:
         if incoming not in MASQ2_SESSIONS:
-            MASQ2_SESSIONS[incoming] = {"authenticated": False, "origin": "client"}
+            MASQ2_SESSIONS[incoming] = {"authenticated": False}
         return incoming, MASQ2_SESSIONS[incoming]
-    sid = secrets.token_hex(8)
-    MASQ2_SESSIONS[sid] = {"authenticated": False, "origin": "server"}
+    sid = masq2_make_sid()
+    MASQ2_SESSIONS[sid] = {"authenticated": False}
     return sid, MASQ2_SESSIONS[sid]
 
 
@@ -740,7 +764,7 @@ def masq2_reservations():
     resp = None
     if not sess["authenticated"]:
         resp = make_response(render_template("masq2_reservations.html", authed=False), 401)
-    elif sess["origin"] != "client":
+    elif masq2_is_server_issued(sid):
         # logged in completely normally -- functionally fine, but proves nothing about fixation
         resp = make_response(render_template("masq2_reservations.html",
             authed=True, fixated=False))
