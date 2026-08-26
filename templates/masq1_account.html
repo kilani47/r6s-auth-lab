@@ -7,31 +7,31 @@
     <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
   <a href="/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Command</a>
   <div class="relative min-h-screen flex items-center justify-center p-6">
-    <div class="w-full max-w-[480px] bg-panel2/95 border border-line rounded-xl overflow-hidden shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
-      <div class="flex items-center gap-4 px-6 py-5 border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+    <div class="w-full max-w-[480px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
         <img src="/static/img/ops/alibi.svg" alt="Alibi" class="w-14 h-14 shrink-0">
         <div>
           <div class="text-[11px] tracking-[.2em] text-atk uppercase">Rainbow-Corp National Bank</div>
-          <h1 class="my-1 text-lg tracking-wide font-bold">Welcome back, {{ user }}</h1>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Welcome back, {{ user }}</h1>
         </div>
       </div>
 
       <div class="px-6 py-5">
-        <div class="flex items-center justify-between px-4 py-3 rounded-md border border-line bg-[#0c1116]">
+        <div class="flex items-center justify-between px-4 py-3 rounded-sm border border-line bg-[#0c1116]">
           <div>
             <div class="text-[10px] tracking-widest text-dim uppercase">Session role</div>
             <div class="text-txt font-mono text-sm mt-0.5">{{ role }}</div>
           </div>
-          <span class="text-[10px] tracking-widest uppercase font-bold px-2.5 py-1 rounded-full border border-line text-dim">Standard access</span>
+          <span class="text-[10px] tracking-widest uppercase font-bold px-2.5 py-1 hud-tag border border-line text-dim">Standard access</span>
         </div>
 
-        <div class="mt-4 px-4 py-3 rounded-md border border-line bg-[#0c1116]">
+        <div class="mt-4 px-4 py-3 rounded-sm border border-line bg-[#0c1116]">
           <div class="text-[10px] tracking-widest text-dim uppercase">Checking Account · ****4471</div>
           <div class="text-2xl font-bold mt-1 text-txt">$2,140.55</div>
         </div>
 
         <a href="/masquerade/op1/vault"
-           class="mt-5 block text-center w-full py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase rounded-md hover:brightness-110 transition">
+           class="mt-5 block text-center w-full py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">
            Vault Operations →</a>
         <div class="mt-2 text-[11px] text-dim text-center">Branch staff only. Customer accounts cannot access vault operations.</div>
       </div>

@@ -10,12 +10,13 @@
     theme: {
       extend: {
         colors: {
-          bg:'#07090c', panel:'#0f151c', panel2:'#12171d', line:'#1e2a36',
-          txt:'#d7dee6', dim:'#7d8b99',
-          atk:'#f0a202', atk2:'#ff6b1a', def:'#2f7fe0', win:'#3fb950', red:'#e23b3b',
+          bg:'#05070a', panel:'#0c131a', panel2:'#0f171f', line:'#22303f',
+          txt:'#dbe3ea', dim:'#7f8da0',
+          atk:'#ff7a1a', atk2:'#ffb020', def:'#2f8fe0', win:'#35d488', red:'#ff3b3b',
         },
         fontFamily: {
-          sans: ['"Segoe UI"','Roboto','system-ui','sans-serif'],
+          sans: ['Inter','"Segoe UI"','Roboto','system-ui','sans-serif'],
+          display: ['"Chakra Petch"','Inter','"Segoe UI"','sans-serif'],
           mono: ['"JetBrains Mono"','ui-monospace','Consolas','monospace'],
         },
         keyframes: {
@@ -46,23 +47,64 @@
   };
 </script>
 <style>
+  /* Self-hosted -- this app is designed to run fully offline (Docker, no CDN at runtime),
+     so fonts are vendored the same way static/vendor/tailwind.js is, never pulled from
+     Google Fonts at request time. */
+  @font-face{ font-family:'Chakra Petch'; font-style:normal; font-weight:400; font-display:swap;
+    src:url('/static/vendor/fonts/chakra-petch-400.woff2') format('woff2'); }
+  @font-face{ font-family:'Chakra Petch'; font-style:normal; font-weight:500; font-display:swap;
+    src:url('/static/vendor/fonts/chakra-petch-500.woff2') format('woff2'); }
+  @font-face{ font-family:'Chakra Petch'; font-style:normal; font-weight:600; font-display:swap;
+    src:url('/static/vendor/fonts/chakra-petch-600.woff2') format('woff2'); }
+  @font-face{ font-family:'Chakra Petch'; font-style:normal; font-weight:700; font-display:swap;
+    src:url('/static/vendor/fonts/chakra-petch-700.woff2') format('woff2'); }
+  @font-face{ font-family:'Inter'; font-style:normal; font-weight:400 700; font-display:swap;
+    src:url('/static/vendor/fonts/inter-variable.woff2') format('woff2'); }
+  @font-face{ font-family:'JetBrains Mono'; font-style:normal; font-weight:400 700; font-display:swap;
+    src:url('/static/vendor/fonts/jetbrains-mono-variable.woff2') format('woff2'); }
+
   /* belt-and-suspenders: if body's content is shorter than the viewport, html's own
      background shows through beneath it -- keep that dark too, not browser-default white. */
-  html{ background:#04060a; }
+  html{ background:#030507; }
   /* layered tactical backdrop + scanlines (easier as raw CSS than utilities) */
   .app-bg{
     background:
       repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px),
-      radial-gradient(1400px 700px at 50% -20%, #12202e, transparent),
-      linear-gradient(180deg, #080b0f, #04060a);
+      radial-gradient(1400px 700px at 50% -20%, #101d2a, transparent),
+      linear-gradient(180deg, #070a0e, #030507);
   }
-  .scanlines{ background:repeating-linear-gradient(0deg, rgba(63,185,80,.05) 0 2px, transparent 2px 5px); mix-blend-mode:screen; }
-  /* angular clip for tactical panels */
-  .clip-tac{ clip-path:polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%); }
-  .text-glow-atk{ text-shadow:0 0 40px rgba(240,162,2,.18); }
-  .text-glow-win{ text-shadow:0 0 26px rgba(63,185,80,.7); }
+  .scanlines{ background:repeating-linear-gradient(0deg, rgba(53,212,136,.05) 0 2px, transparent 2px 5px); mix-blend-mode:screen; }
+
+  /* ============================================================================
+     SIGNATURE: HUD targeting frame. Every panel on the site -- login cards, mission
+     cards, roster tiles, victory boxes -- gets opposite-corner brackets (top-left +
+     bottom-right) instead of a rounded, drop-shadowed card. It's the one motif that
+     repeats everywhere: a scope reticle, not a rounded box. Pair with a color
+     modifier so attacker/defender/success contexts each read at a glance. =========== */
+  .hud-frame{ position:relative; border-radius:2px; }
+  .hud-frame::before, .hud-frame::after{
+    content:''; position:absolute; width:15px; height:15px; pointer-events:none;
+  }
+  .hud-frame::before{ top:-1px; left:-1px; border-top:2px solid var(--hf, #3a4b5c); border-left:2px solid var(--hf, #3a4b5c); }
+  .hud-frame::after { bottom:-1px; right:-1px; border-bottom:2px solid var(--hf, #3a4b5c); border-right:2px solid var(--hf, #3a4b5c); }
+  .hud-frame-atk{ --hf:#ff7a1a; } .hud-frame-def{ --hf:#2f8fe0; }
+  .hud-frame-win{ --hf:#35d488; } .hud-frame-red{ --hf:#ff3b3b; }
+
+  /* header-strip diagonal notch -- the same cut language, scaled down, on the bar
+     that carries an operator icon + title inside a hud-frame panel */
+  .hud-cut{ clip-path:polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%); }
+
+  /* CTA buttons: opposite-corner bevel (top-right + bottom-left) instead of a
+     rounded pill -- the button-scale echo of the panel brackets, rotated 90°. */
+  .hud-btn{ clip-path:polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 11px 100%, 0 calc(100% - 11px)); }
+
+  /* status tags ("Cleared" / "Live" / "Deploying"): a small notch instead of a pill */
+  .hud-tag{ clip-path:polygon(0 0, 100% 0, 100% 100%, 7px 100%, 0 calc(100% - 7px)); }
+
+  .text-glow-atk{ text-shadow:0 0 40px rgba(255,122,26,.2); }
+  .text-glow-win{ text-shadow:0 0 26px rgba(53,212,136,.7); }
   .word-break{ word-break:break-all; }
-  ::selection{ background:rgba(240,162,2,.3); }
+  ::selection{ background:rgba(255,122,26,.32); }
 </style>
 {% block head %}{% endblock %}
 </head>

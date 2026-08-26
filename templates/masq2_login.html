@@ -7,12 +7,12 @@
     <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
   <a href="/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Command</a>
   <div class="relative min-h-screen flex items-center justify-center p-6">
-    <div class="w-full max-w-[440px] bg-panel2/95 border border-line rounded-xl overflow-hidden shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
-      <div class="relative flex items-center gap-4 px-6 py-5 border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+    <div class="w-full max-w-[440px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="relative flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
         <img src="/static/img/ops/vigil.svg" alt="Vigil" class="w-[70px] h-[70px] shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,.5)]">
         <div>
           <div class="text-[11px] tracking-[.2em] text-atk uppercase">Masquerade 02 · Stolen Keys</div>
-          <h1 class="my-1 text-xl tracking-wide font-bold">Meridian Tower</h1>
+          <h1 class="my-1 text-xl tracking-wide font-display font-bold">Meridian Tower</h1>
           <div class="text-[12px] text-dim">Guest Portal · Digital Key Card</div>
         </div>
         <div class="absolute top-3.5 right-3.5" title="Your operator: Zero">
@@ -20,24 +20,24 @@
         </div>
       </div>
 
-      <div class="mx-6 mt-4 px-3.5 py-2.5 rounded-md text-[12px] border border-line bg-[#0c1116] text-dim">
+      <div class="mx-6 mt-4 px-3.5 py-2.5 rounded-sm text-[12px] border border-line bg-[#0c1116] text-dim">
         Test account provided — this mission isn't about the password:<br>
         <span class="text-txt font-semibold">guest.stay</span> / <span class="text-txt font-semibold">Meridian2024!</span>
       </div>
 
       {% if error %}
-      <div class="mx-6 mt-3 px-3.5 py-3 rounded-md text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ error }}</div>
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ error }}</div>
       {% endif %}
 
       <form method="post" action="/masquerade/op2/login" class="px-6 py-5">
         <label for="u" class="block text-[12px] text-dim mt-1 mb-1.5 tracking-wide uppercase">Guest ID</label>
         <input id="u" name="username" autocomplete="off" placeholder="guest.stay"
-               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-md text-txt text-sm outline-none focus:border-atk">
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
         <label for="p" class="block text-[12px] text-dim mt-3.5 mb-1.5 tracking-wide uppercase">Password</label>
         <input id="p" name="password" type="password" autocomplete="off"
-               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-md text-txt text-sm outline-none focus:border-atk">
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
         <button type="submit"
-                class="w-full mt-5 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase rounded-md hover:brightness-110 transition">Check In</button>
+                class="w-full mt-5 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Check In</button>
       </form>
       <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">Every guest is issued a digital key card the moment they arrive — even before checking in.</div>
     </div>

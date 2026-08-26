@@ -9,17 +9,17 @@
   <div class="absolute inset-0 bg-[radial-gradient(1200px_700px_at_50%_40%,rgba(7,9,12,.35),rgba(7,9,12,.92))]"></div>
   <div class="absolute inset-0 scanlines pointer-events-none opacity-60"></div>
   <div class="relative px-6 animate-rise-1">
-    <div class="text-[11px] tracking-[.5em] text-atk uppercase mb-2">Rainbow-Corp // Red Team Program</div>
-    <h1 class="m-0 font-extrabold tracking-[.4em] text-glow-atk text-5xl sm:text-7xl
+    <div class="text-[11px] tracking-[.4em] text-atk uppercase mb-2 font-mono">Rainbow-Corp // Red Team Program</div>
+    <h1 class="m-0 font-display font-bold tracking-[.14em] text-glow-atk text-5xl sm:text-7xl
                bg-gradient-to-r from-atk via-white to-def bg-clip-text text-transparent select-none">SHIELDBREAKER</h1>
     <p class="max-w-xl mx-auto mt-4 text-[13px] sm:text-[15px] text-txt/80 leading-relaxed tracking-wide">
       Two campaigns, one Command. Pick your operator, break each shield, and capture the flag.
       One breach unlocks the next.
     </p>
     <button onclick="deploy()"
-            class="mt-8 px-10 py-3.5 rounded-lg font-extrabold tracking-[.2em] uppercase text-sm
+            class="hud-btn mt-8 px-10 py-3.5 font-display font-bold tracking-[.2em] uppercase text-sm
                    bg-atk text-[#0b0e11] hover:brightness-110 hover:scale-105 transition animate-pulseglow">◤ Deploy ◥</button>
-    <div class="mt-5 text-[10px] tracking-[.3em] text-dim uppercase">Rainbow Six Siege © Ubisoft · personal educational lab</div>
+    <div class="mt-5 text-[10px] tracking-[.3em] text-dim uppercase font-mono">Rainbow Six Siege © Ubisoft · personal educational lab</div>
   </div>
 </div>
 <script>
@@ -38,21 +38,21 @@
    Called once per campaign below with that campaign's own data, so the two
    campaigns can never see each other's progress or missions. ============== #}
 {% macro campaign_section(attackers, defenders, visible, solved, nxt, more, total_cleared, reset_url) %}
-  <div class="flex justify-center items-center gap-5 my-6 text-[12px] tracking-widest text-dim flex-wrap">
+  <div class="flex justify-center items-center gap-5 my-6 text-[12px] tracking-widest text-dim flex-wrap font-mono">
     <span>OPERATIONS CLEARED: <b class="text-win">{{ total_cleared }}</b></span>
     {% if nxt %}<span>NEXT: OPERATION {{ '%02d'|format(nxt) }}</span>
     {% else %}<span class="text-win">CAMPAIGN COMPLETE</span>{% endif %}
     {% if total_cleared %}<a href="{{ reset_url }}"
-      class="text-dim border border-line rounded-full px-3 py-[3px] text-[10px] hover:border-red hover:text-red transition">RESET PROGRESS</a>{% endif %}
+      class="hud-tag text-dim border border-line px-3 py-[3px] text-[10px] hover:border-red hover:text-red transition">RESET PROGRESS</a>{% endif %}
   </div>
 
   <div class="grid md:grid-cols-[1fr_auto_1fr] gap-4 items-stretch">
-    <section class="rounded-2xl border border-line bg-panel/60 p-4 shadow-[inset_0_0_44px_rgba(240,162,2,.06)]">
-      <h2 class="text-center text-atk text-sm tracking-[.35em] uppercase m-0 mb-3 pb-2.5 border-b border-line">Attackers</h2>
+    <section class="hud-frame hud-frame-atk border border-line bg-panel/60 p-4 shadow-[inset_0_0_44px_rgba(255,122,26,.06)]">
+      <h2 class="text-center text-atk text-sm tracking-[.3em] uppercase m-0 mb-3 pb-2.5 border-b border-line font-display font-semibold">Attackers</h2>
       <div class="grid grid-cols-3 gap-2.5">
         {% for o in attackers %}
-        <div class="group rounded-xl border border-line bg-gradient-to-b from-[#111922] to-[#0b1017] py-3 text-center
-                    transition hover:-translate-y-1 hover:border-atk hover:shadow-[0_8px_22px_rgba(240,162,2,.18)]">
+        <div class="group rounded-sm border border-line bg-gradient-to-b from-[#111922] to-[#0b1017] py-3 text-center
+                    transition hover:-translate-y-1 hover:border-atk hover:shadow-[0_8px_22px_rgba(255,122,26,.18)]">
           <img src="/static/img/ops/{{ o.slug }}.svg" alt="{{ o.name }}"
                class="w-14 h-14 mx-auto drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] transition group-hover:scale-110">
           <div class="text-[11px] tracking-wider mt-1.5 text-dim uppercase group-hover:text-txt">{{ o.name }}</div>
@@ -61,15 +61,15 @@
       </div>
     </section>
     <div class="flex items-center justify-center">
-      <div class="text-5xl font-black text-white -rotate-6
-                  [text-shadow:0_0_22px_rgba(255,107,26,.6),0_0_8px_rgba(47,127,224,.6)]">VS</div>
+      <div class="text-5xl font-display font-bold text-white -rotate-6
+                  [text-shadow:0_0_22px_rgba(255,122,26,.6),0_0_8px_rgba(47,143,224,.6)]">VS</div>
     </div>
-    <section class="rounded-2xl border border-line bg-panel/60 p-4 shadow-[inset_0_0_44px_rgba(47,127,224,.08)]">
-      <h2 class="text-center text-def text-sm tracking-[.35em] uppercase m-0 mb-3 pb-2.5 border-b border-line">Defenders</h2>
+    <section class="hud-frame hud-frame-def border border-line bg-panel/60 p-4 shadow-[inset_0_0_44px_rgba(47,143,224,.08)]">
+      <h2 class="text-center text-def text-sm tracking-[.3em] uppercase m-0 mb-3 pb-2.5 border-b border-line font-display font-semibold">Defenders</h2>
       <div class="grid grid-cols-3 gap-2.5">
         {% for o in defenders %}
-        <div class="group rounded-xl border border-line bg-gradient-to-b from-[#111922] to-[#0b1017] py-3 text-center
-                    transition hover:-translate-y-1 hover:border-def hover:shadow-[0_8px_22px_rgba(47,127,224,.2)]">
+        <div class="group rounded-sm border border-line bg-gradient-to-b from-[#111922] to-[#0b1017] py-3 text-center
+                    transition hover:-translate-y-1 hover:border-def hover:shadow-[0_8px_22px_rgba(47,143,224,.2)]">
           <img src="/static/img/ops/{{ o.slug }}.svg" alt="{{ o.name }}"
                class="w-14 h-14 mx-auto drop-shadow-[0_2px_6px_rgba(0,0,0,.6)] transition group-hover:scale-110">
           <div class="text-[11px] tracking-wider mt-1.5 text-dim uppercase group-hover:text-txt">{{ o.name }}</div>
@@ -79,24 +79,25 @@
     </section>
   </div>
 
-  <div class="text-center text-[13px] tracking-[.35em] text-dim uppercase my-9">— Mission Roster —</div>
+  <div class="text-center text-[13px] tracking-[.35em] text-dim uppercase my-9 font-mono">— Mission Roster —</div>
   <div class="flex flex-col gap-4 max-w-3xl mx-auto">
     {% for m in visible %}
     {% set is_cleared = m.id in solved %}
     {% set is_live = (m.id == nxt) and m.built %}
-    <div class="rounded-2xl border overflow-hidden bg-gradient-to-br from-[#0e151d] to-[#0a0f15]
-                {% if is_live %}border-atk/50 shadow-[0_0_0_1px_rgba(240,162,2,.12),0_14px_40px_rgba(0,0,0,.5)]
+    <div class="hud-frame {% if is_live %}hud-frame-atk{% elif is_cleared %}hud-frame-win{% endif %}
+                border bg-gradient-to-br from-[#0e151d] to-[#0a0f15]
+                {% if is_live %}border-atk/50 shadow-[0_0_0_1px_rgba(255,122,26,.12),0_14px_40px_rgba(0,0,0,.5)]
                 {% elif is_cleared %}border-win/40{% else %}border-line{% endif %}">
-      <div class="flex items-center gap-3 px-4 py-3 border-b border-line
-                  bg-[linear-gradient(90deg,rgba(47,127,224,.12),transparent_45%,rgba(240,162,2,.12))]">
-        <div class="text-2xl font-black text-white/30 min-w-[40px]">{{ m.code }}</div>
+      <div class="hud-cut flex items-center gap-3 px-4 py-3 border-b border-line
+                  bg-[linear-gradient(90deg,rgba(47,143,224,.12),transparent_45%,rgba(255,122,26,.12))]">
+        <div class="text-2xl font-display font-bold text-white/30 min-w-[40px]">{{ m.code }}</div>
         <div class="flex-1">
-          <div class="text-[17px] font-bold tracking-wide">{{ m.name }}</div>
-          <div class="text-[10px] tracking-widest text-dim uppercase mt-0.5">{{ m.wstg }} &middot; {{ m.topic }}</div>
+          <div class="text-[17px] font-display font-semibold tracking-wide">{{ m.name }}</div>
+          <div class="text-[10px] tracking-widest text-dim uppercase mt-0.5 font-mono">{{ m.wstg }} &middot; {{ m.topic }}</div>
         </div>
-        {% if is_cleared %}<span class="text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] rounded-full bg-win text-[#04120a]">✔ Cleared</span>
-        {% elif is_live %}<span class="text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] rounded-full bg-atk text-[#0b0e11] animate-pulseglow">● Live</span>
-        {% else %}<span class="text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] rounded-full border border-line text-dim">◷ Deploying</span>{% endif %}
+        {% if is_cleared %}<span class="hud-tag text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] bg-win text-[#04120a]">✔ Cleared</span>
+        {% elif is_live %}<span class="hud-tag text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] bg-atk text-[#0b0e11] animate-pulseglow">● Live</span>
+        {% else %}<span class="hud-tag text-[10px] tracking-widest uppercase font-bold px-2.5 py-[5px] border border-line text-dim">◷ Deploying</span>{% endif %}
       </div>
       <div class="grid sm:grid-cols-[1fr_220px] gap-4 p-4">
         <div class="text-[13px] leading-relaxed text-[#aab6c2]">
@@ -105,13 +106,13 @@
         <div class="flex items-center justify-around sm:border-l border-line sm:pl-3.5 border-t sm:border-t-0 pt-3 sm:pt-0">
           <div class="flex flex-col items-center gap-1 w-[86px]">
             <img src="/static/img/ops/{{ m.attacker.slug }}.svg" class="w-14 h-14" alt="{{ m.attacker.name }}">
-            <div class="text-[9px] tracking-widest uppercase text-atk">Attacker</div>
+            <div class="text-[9px] tracking-widest uppercase text-atk font-mono">Attacker</div>
             <div class="text-[12px] font-bold tracking-wide">{{ m.attacker.name }}</div>
           </div>
           <div class="text-xl text-dim">⚔</div>
           <div class="flex flex-col items-center gap-1 w-[86px]">
             <img src="/static/img/ops/{{ m.defender.slug }}.svg" class="w-14 h-14" alt="{{ m.defender.name }}">
-            <div class="text-[9px] tracking-widest uppercase text-def">Defender</div>
+            <div class="text-[9px] tracking-widest uppercase text-def font-mono">Defender</div>
             <div class="text-[12px] font-bold tracking-wide">{{ m.defender.name }}</div>
           </div>
         </div>
@@ -119,13 +120,13 @@
       <div class="px-4 pb-4">
         {% if is_cleared %}
           <a href="{{ m.path if m.built else '#' }}"
-             class="inline-block px-5 py-3 rounded-lg font-extrabold tracking-widest uppercase text-[13px] border border-win text-win hover:bg-win/10 transition">✔ Re-run</a>
+             class="hud-btn inline-block px-5 py-3 font-display font-bold tracking-widest uppercase text-[13px] border border-win text-win hover:bg-win/10 transition">✔ Re-run</a>
           <span class="ml-2.5 text-[12px] text-win">token captured</span>
         {% elif is_live %}
           <a href="{{ m.path }}"
-             class="inline-block px-6 py-3 rounded-lg font-extrabold tracking-widest uppercase text-[13px] bg-atk text-[#0b0e11] hover:brightness-110 transition">▶ Begin Breach</a>
+             class="hud-btn inline-block px-6 py-3 font-display font-bold tracking-widest uppercase text-[13px] bg-atk text-[#0b0e11] hover:brightness-110 transition">▶ Begin Breach</a>
         {% else %}
-          <span class="inline-block px-5 py-3 rounded-lg font-extrabold tracking-widest uppercase text-[13px] border border-line text-dim">Intel incoming…</span>
+          <span class="hud-btn inline-block px-5 py-3 font-display font-bold tracking-widest uppercase text-[13px] border border-line text-dim">Intel incoming…</span>
         {% endif %}
       </div>
     </div>
@@ -134,7 +135,7 @@
 
   {% if more %}
   <div class="max-w-3xl mx-auto mt-6 text-center text-[12px] tracking-[.3em] text-[#4b5763] uppercase
-              border border-dashed border-line rounded-xl p-3.5">
+              border border-dashed border-line p-3.5 font-mono">
     ▓▓ Further operations classified — clear the current breach to receive new intel ▓▓
   </div>
   {% endif %}
@@ -143,18 +144,18 @@
 <div class="max-w-6xl mx-auto px-5 pt-8 pb-16">
 
   <header class="text-center mb-2">
-    <h1 class="m-0 font-extrabold tracking-[.5em] text-glow-atk
+    <h1 class="m-0 font-display font-bold tracking-[.16em] text-glow-atk
                text-4xl sm:text-6xl bg-gradient-to-r from-atk via-white to-def
                bg-clip-text text-transparent select-none">SHIELDBREAKER</h1>
-    <div class="text-[12px] text-dim tracking-[.35em] mt-1">SELECT &middot; BREACH &middot; CAPTURE THE FLAG</div>
+    <div class="text-[12px] text-dim tracking-[.35em] mt-1 font-mono">SELECT &middot; BREACH &middot; CAPTURE THE FLAG</div>
   </header>
 
   <!-- ============================== CAMPAIGN 1 — SHIELDBREAKER ============================== -->
   <div class="mt-10 flex items-center gap-3 max-w-3xl mx-auto">
     <div class="h-px flex-1 bg-line"></div>
     <div class="text-center px-2">
-      <div class="text-atk text-lg tracking-[.3em] font-extrabold uppercase">🛡️ Operation Shieldbreaker</div>
-      <div class="text-[10px] text-dim tracking-[.25em] uppercase mt-0.5">WSTG-ATHN &middot; Authentication Testing</div>
+      <div class="text-atk text-lg tracking-[.25em] font-display font-semibold uppercase">🛡️ Operation Shieldbreaker</div>
+      <div class="text-[10px] text-dim tracking-[.25em] uppercase mt-0.5 font-mono">WSTG-ATHN &middot; Authentication Testing</div>
     </div>
     <div class="h-px flex-1 bg-line"></div>
   </div>
@@ -165,8 +166,8 @@
   <div class="mt-16 flex items-center gap-3 max-w-3xl mx-auto">
     <div class="h-px flex-1 bg-line"></div>
     <div class="text-center px-2">
-      <div class="text-def text-lg tracking-[.3em] font-extrabold uppercase">🎭 Operation Masquerade</div>
-      <div class="text-[10px] text-dim tracking-[.25em] uppercase mt-0.5">WSTG-SESS &middot; Sessions, Tokens, OAuth, 2FA</div>
+      <div class="text-def text-lg tracking-[.25em] font-display font-semibold uppercase">🎭 Operation Masquerade</div>
+      <div class="text-[10px] text-dim tracking-[.25em] uppercase mt-0.5 font-mono">WSTG-SESS &middot; Sessions, Tokens, OAuth, 2FA</div>
     </div>
     <div class="h-px flex-1 bg-line"></div>
   </div>
