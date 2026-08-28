@@ -40,7 +40,23 @@
             <span class="text-[10px] tracking-widest uppercase text-win">Resolved</span>
           </div>
         </div>
-        <div class="px-4 py-3 rounded-sm border border-dashed border-line bg-[#0c1116] text-[12px] text-dim text-left">
+
+        <div class="mt-5 pt-4 border-t border-line">
+          <div class="text-[11px] tracking-widest text-dim uppercase mb-2.5">Account Settings</div>
+          <form method="post" action="/masquerade/op3/ticket/?p=process_change_password&id=1">
+            <label for="np" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">New Password</label>
+            <input id="np" name="new_password" type="password" autocomplete="off"
+                   class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+            <label for="cp" class="block text-[12px] text-dim mt-3 mb-1.5 tracking-wide uppercase">Confirm New Password</label>
+            <input id="cp" name="confirm_password" type="password" autocomplete="off"
+                   class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+            <input type="hidden" name="submit" value="Change Password">
+            <button type="submit"
+                    class="w-full mt-3.5 py-2.5 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition text-[13px]">Change Password</button>
+          </form>
+        </div>
+
+        <div class="mt-4 px-4 py-3 rounded-sm border border-dashed border-line bg-[#0c1116] text-[12px] text-dim text-left">
           You're signed in, and everything here works exactly as it should. That's the
           uncomfortable part of this mission: <span class="text-txt">normal use isn't broken at
           all.</span> A vulnerability can be completely real and still be invisible from the
