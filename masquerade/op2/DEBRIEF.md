@@ -9,14 +9,16 @@ issued by login at all — it was just adopted, which means anyone who can hand 
 identifier *before* they log in can walk in on their account *after* they do, without ever
 knowing, guessing, or needing the target's password.**
 
-That last clause is the part it's easy to lose track of while playing this mission solo: the
-credentials you type in Step 3 below are the *victim's*, used legitimately, by (a simulated)
-them. The attacker's own entry — Step 4 — never touches a credential at all.
+This mission has a real second party built in — R. Voss, Meridian's regional director, whose
+check-in you route yourself but whose password you're never given and never need. That's not a
+narrative flourish; it's the whole point made unambiguous. You supply Voss's login exactly once
+(Step 2), by routing a card number to the front desk — never a credential. Every credential Voss
+ever uses belongs to the app's own NPC logic, never to you.
 
 Operation 01 asked whether the server verifies what's *inside* a token. This operation asks a
 narrower, sneakier question: does the server even control *which* token gets trusted in the
 first place — or does it just keep using whatever identifier happened to already be sitting on
-the request?
+the request, no matter who put it there?
 
 ---
 
@@ -36,26 +38,29 @@ The mental model for fixation specifically: think of the session identifier as a
 card**. A secure hotel cuts you a brand-new card the moment you check in — the front desk would
 never hand you a card that was just sitting in the lobby rack, unassigned, and let it become
 *your* card the instant you show ID. A vulnerable hotel does exactly that: the card in the rack
-becomes valid the moment anyone checks in while holding it — it never gets recut. If an
-attacker can slip a guest a specific card number *before* they check in (a link with the ID
-embedded, a cookie planted via a subdomain, a QR code at the counter), that attacker already
-knows the number of the card that will become active the second the guest hands over their ID.
+becomes valid the moment anyone checks in while holding it — it never gets recut. If an attacker
+can slip a guest a specific card number *before* they check in (a link with the ID embedded, a
+cookie planted via a subdomain, a QR code at the counter), that attacker already knows the
+number of the card that will become active the second the guest hands over their ID — and this
+mission's front desk plays that guest's part for real, with its own separate account, so there's
+no ambiguity about whose login actually happened.
 
 The server-side root cause is always the same missing step, no matter how the identifier
-arrives: **authentication changed the user's privilege level, but nothing rotated the
-identifier that privilege is attached to.**
+arrives, and no matter who checks in on it: **authentication changed the user's privilege level,
+but nothing rotated the identifier that privilege is attached to.**
 
 ---
 
 ## The R6 framing
 
 **Zero's** entire kit is built around *taking over something that already exists* rather than
-deploying something new: his Argus cameras let him silently hack into an enemy's *own* Bulletproof
-Cameras, Nest launchers, and Evil Eyes — turning the defenders' existing infrastructure against
-them without ever needing to plant new hardware of his own inside their perimeter. That's
-precisely what session fixation is: Zero doesn't need to forge a session from nothing (that's a
-different mission) — he just needs the hotel to keep using an identifier that was already
-sitting there, one he quietly nominated in advance.
+deploying something new: his Argus cameras let him silently hack into an enemy's *own*
+Bulletproof Cameras, Nest launchers, and Evil Eyes — turning the defenders' existing
+infrastructure against them without ever needing to plant new hardware of his own inside their
+perimeter. That's precisely what session fixation is: Zero doesn't need to forge a session from
+nothing (that's a different mission) — he just needs the hotel to keep using an identifier that
+was already sitting there, one he quietly nominated in advance, then let R. Voss's own
+legitimate check-in do the rest.
 
 **Vigil** is a detection specialist — his entire kit exists to keep him invisible to enemy
 drones and camera feeds the instant he's spotted, evading the very systems built to flag
@@ -69,69 +74,67 @@ isn't evading a check — it's walking through a door that was never checking at
 
 ## Walking through what you had to do (and what to notice)
 
-### Step 1 — Observe the identifier *before* authentication exists
+### Step 1 — Establish the baseline with your own, honest login
 
-Visiting the guest portal pre-login already gets you a `guest_sid` cookie. This by itself
-isn't the bug — plenty of correctly-built apps assign a pre-auth session for things like CSRF
-tokens or cart state. The bug is only provable by what happens *next*.
+Log into your own account (`guest.stay` / `Meridian2024!`) normally and look at what the
+reservations page shows. Nothing about this step is broken — that's the point of doing it first.
+A vulnerability report is stronger when it can show what *correct* behavior looks like right
+next to what's wrong.
 
-*What to pay attention to:* WSTG-SESS-03 testing always starts by establishing a baseline
-identifier pre-auth — you can't detect "did this change on login" without first recording what
-it was before login.
+*What to pay attention to:* WSTG-SESS-03 testing always starts by establishing a baseline before
+looking for the deviation. "I'm logged in and it works" is not, by itself, evidence of anything.
 
-### Step 2 — Log in while continuing to present that same identifier
+### Step 2 — Route a card you invented to a guest you don't control
 
-Submit valid credentials without ever clearing or replacing the cookie you already had. Check
-it again afterward.
+The front-desk panel isn't flavor text. Type a card number of your own choosing and submit it.
+The app's response tells you plainly what just happened: R. Voss, a real account with a real
+password you are never shown, has checked in using exactly the card you typed.
 
-*What to pay attention to:* the identifier is byte-for-byte the same value before and after.
-That's the entire test. No decoding, no tampering with fields — just checking whether a value
-survived a privilege boundary it should never have survived.
+*What to pay attention to:* this is the step that makes the whole mission unambiguous. You did
+not log in as Voss. You could not have — you don't have Voss's password, and the form never asks
+for one. All you controlled was which card number Voss's (simulated) legitimate check-in would
+land on.
 
-### Step 3 — Turn "it didn't change" into "I get to choose it"
+### Step 3 — Reuse that same card yourself
 
-If the server accepts whatever identifier was already present and simply upgrades its trust
-level on login, the identifier never had to be server-issued at all. Manually set `guest_sid`
-to a value of your own choosing *before* visiting the login page, then authenticate while still
-presenting it.
+Set your own cookie (or URL parameter) to the exact card number you routed in Step 2, and visit
+the guest portal again.
 
-*What to pay attention to:* this is the pivot from an observation to an exploit. "The server
-doesn't rotate the identifier" is a finding. "I can pre-select the identifier that will become
-authenticated" is the *impact* of that finding — the part that makes it worth reporting instead
-of just noting.
+*What to pay attention to:* nothing you do in this step involves a password either. You're
+simply presenting a value.
 
-### Step 4 — Come back as the attacker, with *nothing but the identifier*
+### Step 4 — Reach the reservation with *zero* credentials
 
-This is the step that's easy to blur into Step 3 and, in doing so, miss the entire point. Log in
-once (Step 3), then throw away every bit of state that request produced — a fresh
-`requests.Session()`, a second `curl`, an incognito tab — and present *only* the identifier from
-Step 3 to `/reservations`. No username. No password. No login request at all in this step.
+Open a request that has never logged in anywhere — a private/incognito tab, a fresh `curl`, a
+brand-new `requests.Session()` — and go straight to `/reservations` carrying only the card
+number. No login form touched in this request at all.
 
-*What to pay attention to:* reaching the reservations page from the *same* browser you just
-logged in with proves nothing — of course a session you're logged into stays logged in. What
-proves the vulnerability is that a request carrying **zero credentials** still reaches an
-authenticated account, purely because it happened to present an identifier that a login
-elsewhere had already blessed. That's the actual capability a real attacker gets: access to the
-victim's account without ever knowing, guessing, or needing the victim's password.
+*What to pay attention to:* this is the step that actually proves the vulnerability, and it's
+easy to blur into Step 3 by accident. Reaching the reservations page from the *same* session you
+just used to send the check-in link proves nothing — of course a session stays whatever it was
+doing. What proves the vulnerability is that a request carrying **zero credentials of any kind**
+still reaches an authenticated account belonging to *someone else*, purely because it happened
+to present a card that a real login elsewhere had already validated. Check whose name is on the
+reservation — it should be Voss's, not yours.
 
 *What to notice about the app's own responses:* reaching the reservations page fails outright
-pre-auth, and succeeds — but *without* proof of anything — if you're authenticated on an
-identifier the server minted itself. It only confirms the vulnerability when the identifier that
-ends up authenticated is one that demonstrably originated on your side of the connection, before
-login ever happened. "I'm logged in" alone proves nothing about fixation — plenty of totally
-secure apps let you log in fine. The finding is about *which* identifier ends up trusted, and
-whether *reaching* that trust required a credential at all.
+with no card at all, and succeeds — but *without* proof of anything — if you're authenticated on
+your own, ordinary login. It only confirms the vulnerability when the account reached belongs to
+someone whose credentials you never submitted in this process. "I'm logged in" alone proves
+nothing about fixation — plenty of totally secure apps let you log in fine. The finding is about
+*whose* trust you're standing on, and whether reaching it required a credential at all.
 
 ### Step 5 — The second, smaller finding: it's not even cookie-only
 
-Your notes' root-causes checklist lists session identifiers accepted via URL query parameters
-as its own separate, testable item — and for good reason: a URL is far easier to hand a victim
-than a raw cookie write (a shared link, a bookmark, a QR code, a referer header leak). Try
-`?guest_sid=<value>` on the portal URL instead of setting a cookie.
+Your notes' root-causes checklist lists session identifiers accepted via URL query parameters as
+its own separate, testable item — and for good reason: a URL is far easier to hand a victim than
+a raw cookie write (a shared link, a bookmark, a QR code, a referer header leak). Try
+`?guest_sid=<value>` both when visiting the portal *and* when routing a card to the front desk,
+instead of setting a cookie at all.
 
 *What to pay attention to:* this succeeds through the exact same underlying flaw — the server
-never distinguishes "an identifier I chose" from "an identifier that showed up in the request,"
-regardless of which channel it arrived through.
+never distinguishes "an identifier I minted" from "an identifier that showed up in the request,"
+regardless of which channel it arrived through, and regardless of who authenticated it.
 
 ---
 
@@ -144,10 +147,10 @@ def masq2_get_session():
     incoming = request.cookies.get("guest_sid") or request.args.get("guest_sid")
     if incoming:
         if incoming not in MASQ2_SESSIONS:
-            MASQ2_SESSIONS[incoming] = {"authenticated": False}
+            MASQ2_SESSIONS[incoming] = {"authenticated": False, "authenticated_as": None}
         return incoming, MASQ2_SESSIONS[incoming]
     sid = masq2_make_sid()
-    MASQ2_SESSIONS[sid] = {"authenticated": False}
+    MASQ2_SESSIONS[sid] = {"authenticated": False, "authenticated_as": None}
     return sid, MASQ2_SESSIONS[sid]
 ```
 
@@ -155,36 +158,47 @@ Any identifier the client presents — whether it was ever issued by this server
 accepted and tracked. A brand-new, server-issued identifier is only minted as a last resort,
 when the request carries *nothing* at all.
 
-**2. Login flips a flag on whatever identifier was already in play — it never mints a new one**
+**2. Both real logins funnel through the exact same authentication step**
 
 ```python
-@app.route("/masquerade/op2/login", methods=["POST"])
-def masq2_login():
-    sid, sess = masq2_get_session()          # whatever sid is already attached -- untouched
-    ...
-    sess["authenticated"] = True             # VULN: flips the flag on the SAME sid -- no rotation
-    resp = make_response(redirect(url_for("masq2_reservations")))
-    resp.set_cookie("guest_sid", sid)
-    return resp
+def masq2_authenticate(sess, who):
+    sess["authenticated"] = True
+    sess["authenticated_as"] = who         # "guest" (you) or "npc" (R. Voss)
 ```
 
-This is the exact missing step. A correct version would discard `sid` entirely at this point
-and mint a fresh one:
+`masq2_login` (your own login) and `masq2_send_link` (the front desk routing a card to Voss)
+both end by calling this on whatever `sid` was already attached to that request. Neither one
+mints a replacement. That's the entire vulnerability, in one function: authentication changes
+what a session is trusted to do, but never changes *which* session that trust attaches to —
+regardless of whether it's you or Voss doing the authenticating.
+
+```python
+@app.route("/masquerade/op2/send-link", methods=["POST"])
+def masq2_send_link():
+    raw = (request.form.get("sid") or "").strip()
+    ...
+    if raw not in MASQ2_SESSIONS:
+        MASQ2_SESSIONS[raw] = {"authenticated": False, "authenticated_as": None}
+    masq2_authenticate(MASQ2_SESSIONS[raw], "npc")     # Voss checks in on YOUR chosen card
+    ...
+```
+
+A correct version would discard the card number entirely at authentication time and mint a
+fresh one instead:
 
 ```python
 # what SHOULD happen (not in this app):
-sess["authenticated"] = True
+masq2_authenticate(sess, who)
 new_sid = secrets.token_hex(16)
 MASQ2_SESSIONS[new_sid] = MASQ2_SESSIONS.pop(sid)   # migrate state to a FRESH identifier
 resp.set_cookie("guest_sid", new_sid)                # old sid is now dead, unusable by anyone
 ```
 
 That regeneration — issuing a brand-new identifier and invalidating the old one at the exact
-moment privilege changes — is the entire fix, and it's the one-line (well, few-line) intervention
-your course notes call out directly.
+moment privilege changes, no matter who is authenticating — is the entire fix, and it's the
+one-line (well, few-line) intervention your course notes call out directly.
 
-**3. The flag only fires when the authenticated identifier can be proven to have originated
-client-side**
+**3. The flag only fires when the authenticated identifier belongs to someone else's login**
 
 ```python
 @app.route("/masquerade/op2/reservations")
@@ -192,26 +206,29 @@ def masq2_reservations():
     sid, sess = masq2_get_session()
     if not sess["authenticated"]:
         ...                                            # 401 -- not checked in
-    elif masq2_is_server_issued(sid):
-        ...                                            # authed, but proves nothing
+    elif sess["authenticated_as"] != "npc":
+        ...                                             # you, on your own account -- proves nothing
     else:
-        mark_masq_solved(2)                             # reaching this with a client-planted sid clears Op02
+        mark_masq_solved(2)                             # reaching this on Voss's card clears Op02
         ...
 ```
 
-`masq2_is_server_issued()` exists purely to make this challenge gradeable — it's the app's own
-ground truth for "was this a fixation exploit, or just an ordinary login," used only to decide
-when to award the flag. It isn't a plain `dict` lookup, on purpose: every server-minted sid is
-signed with a fixed key (`masq2_sign()`/`masq2_make_sid()`, further up in `app.py`), and the
-check re-verifies that signature on *every* request rather than remembering a one-time
-first-sight classification. An in-memory "have I seen this sid before" dict would forget
-everything the instant the process restarts — and Docker restarts this app automatically on any
-crash — while a visitor's cookie survives that restart untouched. That combination used to turn
-a perfectly ordinary login, made right after a restart with an old-but-legitimate cookie, into a
-false positive that handed out the flag for nothing. Signing makes the check stateless: a
-genuinely server-issued sid verifies forever regardless of how many times the app has restarted
-since, and an attacker-invented one never verifies at all, because forging it requires a key
-they don't have.
+`authenticated_as` is bookkeeping that exists purely to make this challenge gradeable — it
+records *who* actually performed the login that authenticated this particular card: you
+(`"guest"`) or the front desk's simulated victim (`"npc"`). It's not something a real attacker
+gets to see; it's the app's own ground truth for "did this card end up trusted because someone
+*else's* real credentials were used on it," which is exactly the capability a real fixation
+attack grants.
+
+This app also keeps `masq2_sign()` / `masq2_is_server_issued()` around (further up in `app.py`)
+— a fixed-key signature that tells you whether a given card was ever minted by the server at
+all, and does so *statelessly*, so it stays correct even across a process restart (Docker's
+`restart: unless-stopped` will restart this app on any crash, wiping `MASQ2_SESSIONS` — a plain
+"have I seen this card before" dict would otherwise forget a genuinely server-issued card and
+misclassify it after every restart). It's no longer what decides the flag — `authenticated_as`
+is a more direct signal now that there's a real second party to attribute a login to — but it's
+worth reading, because "make a stateful check restart-proof by signing instead of remembering"
+is a generally useful pattern well beyond this one mission.
 
 ---
 
@@ -219,74 +236,76 @@ they don't have.
 
 1. In one sentence, what's the difference between session hijacking and session fixation — and
    why does mixing them up in a report lead to recommending the wrong fix?
-2. Why does merely observing "the identifier didn't change across login" not, by itself, prove
-   the vulnerability — what's the extra step that turns it into a confirmed finding?
+2. Why does establishing your own normal login first strengthen a fixation report, rather than
+   just being a warm-up step?
 3. What's the single missing server-side action that would close this bug completely, even with
    every other line of the app unchanged?
-3b. Every path to the flag in this mission still involves *someone* typing the real password
-    at some point. So what does the attacker actually get away with — what's the one request in
-    the whole exploit that reaches an authenticated account with no credential in it at all?
-4. Why is the URL-parameter acceptance path worth reporting separately from the cookie-based
+4. This mission gives you a real second account (R. Voss) whose password you're never shown. Why
+   does that matter more than it might first seem — what would be weaker about a version of this
+   mission where you played both the attacker and the victim yourself, on one account?
+5. Why is the URL-parameter acceptance path worth reporting separately from the cookie-based
    fixation, even though both stem from the same root cause?
-5. Why does this challenge need to know whether a session identifier was genuinely
-   server-issued — what real-world signal is that standing in for? And why does that check use
-   a signature instead of just remembering which sids it's seen before?
+6. What does `authenticated_as` track that a plain "is this card authenticated: yes/no" flag
+   couldn't have told you? And separately — what does `masq2_is_server_issued()` protect against
+   that `authenticated_as` alone does not?
 
 ---
 
 ## Answer key (reference)
 
-- **Test account:** `guest.stay` : `Meridian2024!` (given — not the point of this mission)
+- **Your test account:** `guest.stay` : `Meridian2024!` (baseline only — not the exploit)
+- **NPC victim:** R. Voss, Regional Director — real account, password never shown to the player
 - **Cookie name:** `guest_sid`
 - **Root cause:** the server never regenerates the session identifier at the moment
-  authentication succeeds; it also accepts that identifier from a `?guest_sid=` URL parameter,
-  not just a cookie
+  authentication succeeds, for either account; it also accepts that identifier from a
+  `?guest_sid=` URL parameter, not just a cookie
 - **Flag:** `R6S{zero_planted_the_key_card_before_checkin}`
 - **Automated:** `python3 masquerade/op2/solver.py http://localhost:8000`
 
 ### Manual walkthrough
 
 ```bash
-# 1) plant our own session id BEFORE ever logging in
+# 1) choose a card number yourself
 SID="PWNED-BY-ZERO-4471"
-curl -s -o /dev/null -b "guest_sid=$SID" http://localhost:8000/masquerade/op2/
 
-# 2) log in, presenting the SAME planted id -- never accept a server-issued one
-curl -s -o /dev/null -b "guest_sid=$SID" -X POST http://localhost:8000/masquerade/op2/login \
-  -d 'username=guest.stay&password=Meridian2024!'
+# 2) route it to the front desk -- R. Voss checks in on this card with Voss's OWN password,
+#    which this command never supplies, because it doesn't have it
+curl -s -o /dev/null -X POST http://localhost:8000/masquerade/op2/send-link \
+  -d "sid=$SID"
 
-# 3) THE PROOF: a brand-new curl invocation, no cookie jar, no prior requests at all --
-#    replay ONLY the planted id. No -d, no username, no password. This is the whole attack:
-#    an authenticated account reached with zero credentials submitted, in this process.
+# 3) THE PROOF: a brand-new curl invocation, no cookie jar, no prior requests, no -d at all --
+#    just the card number. This is the whole attack: an authenticated account (Voss's, not
+#    ours) reached with zero credentials submitted, in this process.
 curl -s -b "guest_sid=$SID" http://localhost:8000/masquerade/op2/reservations | grep -o 'R6S{[^}]*}'
 
 # secondary finding: same trick, via URL parameter instead of a cookie at all
-curl -s -c /tmp/masq2.cj -o /dev/null "http://localhost:8000/masquerade/op2/?guest_sid=URL-PLANTED-9999"
-curl -s -b /tmp/masq2.cj -c /tmp/masq2.cj -o /dev/null -X POST http://localhost:8000/masquerade/op2/login \
-  -d 'username=guest.stay&password=Meridian2024!'
-curl -s -b /tmp/masq2.cj http://localhost:8000/masquerade/op2/reservations | grep -o 'R6S{[^}]*}'
+curl -s -o /dev/null -X POST "http://localhost:8000/masquerade/op2/send-link" -d "sid=URL-PLANTED-9999"
+curl -s "http://localhost:8000/masquerade/op2/reservations?guest_sid=URL-PLANTED-9999" | grep -o 'R6S{[^}]*}'
 ```
 
 ### Report language
 
-- **Finding 1 (WSTG-SESS-03):** The application does not regenerate the session identifier
-  upon successful authentication. An identifier presented by the client prior to login remains
-  valid and becomes authenticated after login, allowing an attacker to fixate a victim's
-  session by supplying them a pre-chosen identifier in advance (e.g., via a crafted link) and
-  later replaying that same identifier as an authenticated session once the victim logs in.
-  *CWE-384 — Session Fixation.*
-- **Finding 2 (WSTG-SESS-03, secondary):** The session identifier is additionally accepted via
-  a `guest_sid` URL query parameter, not just the `guest_sid` cookie, making fixation
-  significantly easier to deliver (a plain link is sufficient — no cookie-setting mechanism is
-  required) and increasing the identifier's exposure through browser history, referer headers,
-  and server access logs. *CWE-598 — Use of GET Request Method With Sensitive Query Strings.*
-- **Impact:** An attacker who can get a target to visit a crafted URL or load a planted cookie
-  before that target logs in can subsequently access the target's authenticated session,
-  without ever needing to observe, guess, or steal the target's actual credentials.
+- **Finding 1 (WSTG-SESS-03):** The application does not regenerate the session identifier upon
+  successful authentication, for any account. An identifier presented by the client prior to
+  login remains valid and becomes authenticated after login, allowing an attacker to fixate a
+  victim's session by supplying them a pre-chosen identifier in advance (e.g., via a crafted
+  link) and later replaying that same identifier as an authenticated session once the victim
+  logs in — without the attacker ever needing to know, guess, or intercept the victim's
+  credentials. *CWE-384 — Session Fixation.*
+- **Finding 2 (WSTG-SESS-03, secondary):** The session identifier is additionally accepted via a
+  `guest_sid` URL query parameter, not just the `guest_sid` cookie, making fixation significantly
+  easier to deliver (a plain link is sufficient — no cookie-setting mechanism is required) and
+  increasing the identifier's exposure through browser history, referer headers, and server
+  access logs. *CWE-598 — Use of GET Request Method With Sensitive Query Strings.*
+- **Impact:** An attacker who can get a target to authenticate (by any means — a phished link, a
+  planted cookie) on an attacker-chosen identifier can subsequently access that target's
+  authenticated session, without ever needing to observe, guess, or steal the target's actual
+  credentials.
 - **Remediation:** Regenerate the session identifier immediately upon any change in privilege
-  level — most importantly, upon successful login — and invalidate the prior identifier
-  entirely. Never accept a session identifier from a URL parameter; sessions should travel
-  exclusively via a cookie flagged `HttpOnly`, `Secure`, and `SameSite`.
+  level — most importantly, upon successful login, for every account without exception — and
+  invalidate the prior identifier entirely. Never accept a session identifier from a URL
+  parameter; sessions should travel exclusively via a cookie flagged `HttpOnly`, `Secure`, and
+  `SameSite`.
 
 ---
 

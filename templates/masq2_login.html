@@ -6,7 +6,7 @@
          class="absolute inset-0 w-full h-full object-cover opacity-40">
     <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
   <a href="/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Command</a>
-  <div class="min-h-screen flex items-center justify-center p-6">
+  <div class="min-h-screen flex flex-col items-center justify-center gap-5 p-6">
     <div class="w-full max-w-[440px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
       <div class="relative flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
         <img src="/static/img/ops/vigil.svg" alt="Vigil" class="w-[70px] h-[70px] shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,.5)]">
@@ -40,6 +40,45 @@
                 class="w-full mt-5 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Check In</button>
       </form>
       <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">Every guest is issued a digital key card the moment they arrive — even before checking in.</div>
+    </div>
+
+    <div class="w-full max-w-[440px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🛎️</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-def uppercase">Front Desk</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Route a Check-In</h1>
+          <div class="text-[12px] text-dim">{{ npc_name }} · {{ npc_title }} · arriving today</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        {{ npc_name }} is due to check in today. The front desk will hand
+        <b class="text-txt">whatever card number you send</b> to {{ npc_name }} in advance — you
+        won't see {{ npc_name }}'s password, and you don't need it.
+      </div>
+
+      {% if link_error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ link_error }}</div>
+      {% endif %}
+
+      {% if link_sent %}
+      <div class="mx-6 mt-4 px-3.5 py-3 rounded-sm text-[13px] border bg-win/[.08] border-win/40 text-[#9be3a7]">
+        Card <code class="font-mono text-[#eafff0]">{{ link_sent }}</code> delivered.
+        {{ npc_name }} has checked in using it.
+        <a href="/masquerade/op2/reservations?guest_sid={{ link_sent }}"
+           class="block mt-2 text-def hover:underline font-semibold">→ Try reaching this reservation</a>
+      </div>
+      {% endif %}
+
+      <form method="post" action="/masquerade/op2/send-link" class="px-6 py-5">
+        <label for="sid" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">Card number to send</label>
+        <input id="sid" name="sid" autocomplete="off" placeholder="e.g. ZERO-4471" maxlength="64"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm font-mono outline-none focus:border-def">
+        <button type="submit"
+                class="w-full mt-4 py-3 bg-def text-[#04101c] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Send Check-In Link</button>
+      </form>
+      <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">Letters, digits, dot, dash, underscore — up to 64 characters.</div>
     </div>
   </div>
   </div>

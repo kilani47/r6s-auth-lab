@@ -11,6 +11,7 @@ DELIBERATELY VULNERABLE per-mission. Local educational lab only.
 """
 import time
 import random
+import re
 import base64
 import hashlib
 import hmac
@@ -684,26 +685,37 @@ def masq1_vault():
 # walks away authenticated. An attacker never has to steal anything -- they just need to
 # hand a victim a pre-chosen card number and wait for the victim to check in with it.
 #
-# To make this provable (not just "did I log in ok", which fixation doesn't visibly break),
-# every server-minted sid is signed with a fixed key (masq2_sign/masq2_is_server_issued
-# below). Reaching the flag requires being authenticated under a sid whose signature does
-# NOT verify: proof you planted the key card yourself, before ever authenticating, and the
-# app never rotated it away from you.
+# There's a real NPC victim, not a role you play yourself: the front desk lets the player
+# hand a card number to R. VOSS (Meridian's regional director, arriving today), and the
+# server plays Voss's part -- visits that card, checks in with Voss's OWN password, which
+# the player is never shown. The player never needed that password either: reaching the
+# flag only requires reusing the card AFTER Voss has checked in with it, in a request that
+# carries no credentials of any kind. That's the whole attack, not a mental exercise.
 #
-# Signed rather than just "remembered": an earlier version tracked origin by whether a sid
-# was already a key in an in-memory dict the first time it was seen. That breaks the moment
-# the process restarts (Docker's restart: unless-stopped will do this on any crash) -- the
-# dict resets to empty, but a visitor's browser cookie survives the restart untouched, so
-# their very next ordinary login looked identical to a fixation attack and falsely handed
-# out the flag. Signing makes the check stateless: a genuinely server-issued sid verifies
-# forever, no matter how many times the app has restarted since it was minted, while an
-# attacker-invented one never verifies at all, since they don't have the signing key.
+# Every session tracks WHO authenticated it -- "guest" (the player, with their own real
+# account, used as the harmless baseline: normal use isn't broken) vs "npc" (Voss, via the
+# front-desk simulation). Only a card that Voss personally checked in on clears the mission;
+# the player logging into their OWN account on a self-planted card proves nothing anymore --
+# that shortcut is gone on purpose, because it let people "solve" this without ever
+# demonstrating that a *different* person's credentials were the ones actually used.
+#
+# masq2_is_server_issued (below) still exists and is still correct -- a signed sid verifies
+# forever, restart or not, exactly as before -- but it's no longer the win condition itself.
+# WHO logged in (tracked per-sid, reset to nobody on every server restart, same as it should
+# be) is what decides the flag now; the signature is kept as the honest, stateless way to
+# recognize a genuinely server-issued card if anything else in this app needs to ask.
 MASQ2_USER = "guest.stay"
-MASQ2_PASSWORD = "Meridian2024!"          # given directly -- this op is not about cracking it
+MASQ2_PASSWORD = "Meridian2024!"          # your own real account -- baseline only, not the exploit
 MASQ2_FLAG = "R6S{zero_planted_the_key_card_before_checkin}"
 MASQ2_SIGNING_KEY = "meridian-front-desk-2024"   # fixed on purpose -- must survive restarts
 
-MASQ2_SESSIONS = {}    # sid -> {"authenticated": bool}
+MASQ2_NPC_NAME = "R. Voss"
+MASQ2_NPC_TITLE = "Regional Director"
+MASQ2_NPC_USER = "r.voss"
+MASQ2_NPC_PASSWORD = secrets.token_hex(16)   # generated at startup -- the player never sees this
+
+MASQ2_SESSIONS = {}    # sid -> {"authenticated": bool, "authenticated_as": "guest"|"npc"|None}
+MASQ2_SID_RE = re.compile(r"[A-Za-z0-9._-]{1,64}")
 
 
 def masq2_sign(raw):
@@ -723,21 +735,30 @@ def masq2_is_server_issued(sid):
 def masq2_get_session():
     """Reuse whatever sid the request already carries (cookie OR ?guest_sid=). Only mint a
     fresh, server-signed sid if truly none was supplied. VULN: never rotates the sid on
-    login -- see masq2_login below."""
+    login -- see masq2_authenticate below."""
     incoming = request.cookies.get("guest_sid") or request.args.get("guest_sid")
     if incoming:
         if incoming not in MASQ2_SESSIONS:
-            MASQ2_SESSIONS[incoming] = {"authenticated": False}
+            MASQ2_SESSIONS[incoming] = {"authenticated": False, "authenticated_as": None}
         return incoming, MASQ2_SESSIONS[incoming]
     sid = masq2_make_sid()
-    MASQ2_SESSIONS[sid] = {"authenticated": False}
+    MASQ2_SESSIONS[sid] = {"authenticated": False, "authenticated_as": None}
     return sid, MASQ2_SESSIONS[sid]
+
+
+def masq2_authenticate(sess, who):
+    """VULN lives here: whoever calls this just flips the SAME sid to authenticated. Nothing
+    ever calls masq2_get_session() again afterward with a freshly minted replacement -- the
+    identifier that walks away authenticated is whatever was already attached going in."""
+    sess["authenticated"] = True
+    sess["authenticated_as"] = who
 
 
 @app.route("/masquerade/op2/")
 def masq2_index():
     sid, _ = masq2_get_session()
-    resp = make_response(render_template("masq2_login.html"))
+    resp = make_response(render_template("masq2_login.html",
+        npc_name=MASQ2_NPC_NAME, npc_title=MASQ2_NPC_TITLE))
     resp.set_cookie("guest_sid", sid)
     return resp
 
@@ -749,13 +770,36 @@ def masq2_login():
     password = request.form.get("password") or ""
     if username != MASQ2_USER or password != MASQ2_PASSWORD:
         resp = make_response(render_template("masq2_login.html",
-            error="Invalid username or password."), 401)
+            error="Invalid username or password.",
+            npc_name=MASQ2_NPC_NAME, npc_title=MASQ2_NPC_TITLE), 401)
         resp.set_cookie("guest_sid", sid)
         return resp
-    sess["authenticated"] = True             # VULN: flips the flag on the SAME sid -- no rotation
+    masq2_authenticate(sess, "guest")        # this is YOUR account -- the harmless baseline
     resp = make_response(redirect(url_for("masq2_reservations")))
     resp.set_cookie("guest_sid", sid)
     return resp
+
+
+@app.route("/masquerade/op2/send-link", methods=["POST"])
+def masq2_send_link():
+    """The front desk, on the player's behalf, hands a chosen card number to R. Voss before
+    Voss ever checks in. The server then plays Voss's part end-to-end: Voss visits that exact
+    card and checks in with Voss's OWN password -- a real, valid, completely ordinary login
+    the player never sees and could not have performed themselves."""
+    raw = (request.form.get("sid") or "").strip()
+    if not MASQ2_SID_RE.fullmatch(raw):
+        return make_response(render_template("masq2_login.html",
+            link_error="Card numbers: letters, digits, dot, dash, underscore -- 1 to 64 characters.",
+            npc_name=MASQ2_NPC_NAME, npc_title=MASQ2_NPC_TITLE), 400)
+
+    if raw not in MASQ2_SESSIONS:
+        MASQ2_SESSIONS[raw] = {"authenticated": False, "authenticated_as": None}
+    # Voss "visits" the card, then checks in with credentials the player is never given --
+    # same masq2_authenticate() every real login goes through, just not the player's turn.
+    masq2_authenticate(MASQ2_SESSIONS[raw], "npc")
+
+    return render_template("masq2_login.html", link_sent=raw,
+        npc_name=MASQ2_NPC_NAME, npc_title=MASQ2_NPC_TITLE)
 
 
 @app.route("/masquerade/op2/reservations")
@@ -764,14 +808,15 @@ def masq2_reservations():
     resp = None
     if not sess["authenticated"]:
         resp = make_response(render_template("masq2_reservations.html", authed=False), 401)
-    elif masq2_is_server_issued(sid):
-        # logged in completely normally -- functionally fine, but proves nothing about fixation
+    elif sess["authenticated_as"] != "npc":
+        # you, logged into your OWN account -- functionally fine, proves nothing about fixation
         resp = make_response(render_template("masq2_reservations.html",
             authed=True, fixated=False))
     else:
-        mark_masq_solved(2)                  # reaching this with a client-planted sid clears Op02
+        mark_masq_solved(2)                  # reaching this on Voss's card clears Op02
         resp = make_response(render_template("masq2_reservations.html",
-            authed=True, fixated=True, flag=MASQ2_FLAG))
+            authed=True, fixated=True, flag=MASQ2_FLAG,
+            npc_name=MASQ2_NPC_NAME, npc_title=MASQ2_NPC_TITLE))
     resp.set_cookie("guest_sid", sid)
     return resp
 
