@@ -21,13 +21,13 @@ a `DEBRIEF.md` (spoilers, full answer key), and a `solver.py` reference solver.
 |---|-----------|---------|-------|----------|---------|
 | 01 | The Teller's Trust | Iana ⚔ Alibi | WSTG-SESS-01 · Cookie Tampering | [CHALLENGER](op1/CHALLENGER.md) | [DEBRIEF](op1/DEBRIEF.md) |
 | 02 | Stolen Keys | Zero ⚔ Vigil | WSTG-SESS-03 · Session Fixation | [CHALLENGER](op2/CHALLENGER.md) | [DEBRIEF](op2/DEBRIEF.md) |
-| 03 | One Click | Ying ⚔ Melusi | CSRF | *classified* | *classified* |
+| 03 | One Click | Ying ⚔ Melusi | WSTG-SESS-05 · CSRF | [CHALLENGER](op3/CHALLENGER.md) | [DEBRIEF](op3/DEBRIEF.md) |
 | 04 | Signed, Not Sealed | Kali ⚔ Echo | JWT Authentication | *classified* | *classified* |
 | 05 | Exposed Claim | Jackal ⚔ Pulse | JWT Claims | *classified* | *classified* |
 | 06 | Delegated Trust | Hibana ⚔ Bandit | Attacking OAuth | *classified* | *classified* |
 | 07 | Unlimited Attempts | Ash ⚔ Warden | Bypassing 2FA | *classified* | *classified* |
 
-**Operations 01–02** are built and playable right now. The rest reveal on Command as they
+**Operations 01–03** are built and playable right now. The rest reveal on Command as they
 ship, one at a time, exactly like Shieldbreaker did.
 
 ---

@@ -16,6 +16,7 @@ import base64
 import hashlib
 import hmac
 import secrets
+from html.parser import HTMLParser
 from flask import Flask, request, render_template, session, redirect, url_for, make_response, jsonify
 
 app = Flask(__name__)
@@ -120,8 +121,10 @@ MASQUERADE_MISSIONS = [
      "wstg": "WSTG-SESS-05", "topic": "CSRF",
      "attacker": {"slug": "ying", "name": "Ying"},
      "defender": {"slug": "melusi", "name": "Melusi"},
-     "blurb": "The browser sends the cookie automatically. That's the whole attack.",
-     "built": False, "path": "#"},
+     "blurb": "The browser sends the cookie automatically, no questions asked. Build a page "
+              "that fires itself the instant it loads, hand it to the admin, and their own "
+              "browser resets their password for you.",
+     "built": True, "path": "/masquerade/op3/"},
     {"id": 4, "code": "04", "name": "Signed, Not Sealed",
      "wstg": "Token-Based Auth", "topic": "JWT Authentication",
      "attacker": {"slug": "kali", "name": "Kali"},
@@ -819,6 +822,168 @@ def masq2_reservations():
             npc_name=MASQ2_NPC_NAME, npc_title=MASQ2_NPC_TITLE))
     resp.set_cookie("guest_sid", sid)
     return resp
+
+
+# ====================================== MASQUERADE OP 03 — CSRF (WSTG-SESS-05)
+# Coastline Ops runs an internal ticket system for resort staff. Its password-change
+# handler trusts exactly one thing: that the request carries a valid session cookie.
+# It never asks for anything the browser wouldn't send automatically -- no per-request
+# token, no re-entered current password, nothing tying the request to a page the user
+# actually meant to submit. The browser doesn't ask permission before attaching a
+# cookie to a request either way, so a page that has NOTHING to do with Coastline Ops
+# can make a logged-in visitor's browser fire that exact request for them.
+#
+# D. CHO, the helpdesk administrator, is a real account, always logged in during
+# business hours, whose password the player is never shown and can never learn any
+# other way -- the only path to it is getting D. Cho's own browser to reset it via a
+# forged request. The "Host a Malicious Page" panel is that delivery mechanism: the
+# player writes real HTML (a hidden auto-submitting form, same shape as any real CSRF
+# proof-of-concept), the app safely parses it (no execution -- html.parser only reads
+# tags), and if it genuinely reproduces the vulnerable request, D. Cho's browser is
+# modeled as visiting it and firing the form -- exactly as an unsuspecting admin's
+# browser would in the real world.
+MASQ3_USER = "support.agent"
+MASQ3_PASSWORD = "Ticket2024!"                     # your own account -- baseline only
+
+MASQ3_ADMIN_USER = "d.cho"
+MASQ3_ADMIN_NAME = "D. Cho"
+MASQ3_ADMIN_TITLE = "Helpdesk Administrator"
+
+MASQ3_FLAG = "R6S{ying_reset_d_chos_password_with_one_click}"
+MASQ3_VULN_PATH = "/masquerade/op3/ticket/"        # mirrors the real advisory's URL shape
+
+MASQ3_PASSWORDS = {MASQ3_USER: MASQ3_PASSWORD, MASQ3_ADMIN_USER: secrets.token_hex(16)}
+
+
+class Masq3PoCParser(HTMLParser):
+    """Safe, read-only HTML tag-walker -- this NEVER executes anything (no eval, no
+    JS engine, no real browser). It only reads a <form>'s action/method and its
+    <input> fields, exactly what a real browser reads before submitting one."""
+    def __init__(self):
+        super().__init__()
+        self.form_found = False
+        self.method = None
+        self.action = None
+        self.fields = {}
+        self._in_form = False
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        tag = tag.lower()
+        if tag == "form":
+            self.form_found = True
+            self._in_form = True
+            self.method = (attrs.get("method") or "get").strip().lower()
+            self.action = attrs.get("action") or ""
+        elif tag == "input" and self._in_form:
+            name = attrs.get("name")
+            if name:
+                self.fields[name] = attrs.get("value", "")
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "form":
+            self._in_form = False
+
+
+def masq3_check_poc(html_text):
+    """Does the submitted HTML actually reproduce the real exploit's shape: an
+    auto-submitting POST form targeting the vulnerable endpoint, with matching
+    password fields? Returns (ok, new_password_or_error_message)."""
+    if len(html_text) > 20000:
+        return False, "That's a lot of HTML for a password-reset page -- keep it under 20,000 characters."
+    parser = Masq3PoCParser()
+    try:
+        parser.feed(html_text)
+    except Exception:
+        return False, "Could not parse that as HTML."
+    if not parser.form_found:
+        return False, "No <form> found -- the real endpoint only accepts a form submission."
+    if parser.method != "post":
+        return False, f"Form method is {(parser.method or 'get').upper()}, but the vulnerable endpoint is a POST handler."
+    if MASQ3_VULN_PATH not in (parser.action or ""):
+        return False, f"Form action doesn't target {MASQ3_VULN_PATH} -- that's the real vulnerable endpoint."
+    new_pw = parser.fields.get("new_password")
+    confirm_pw = parser.fields.get("confirm_password")
+    if not new_pw or not confirm_pw:
+        return False, "Missing new_password / confirm_password hidden fields."
+    if new_pw != confirm_pw:
+        return False, "new_password and confirm_password don't match -- the real form requires both."
+    if "submit" not in parser.fields:
+        return False, "Missing the hidden 'submit' field -- the real handler checks for that too."
+    if ".submit(" not in html_text:
+        return False, ("Nothing auto-submits this form. A lure only ever gets ONE click -- on "
+                        "whatever link opens your page. Add a script (or an onload handler) that "
+                        "calls .submit() on the form itself.")
+    return True, new_pw
+
+
+@app.route("/masquerade/op3/")
+def masq3_index():
+    return render_template("masq3_login.html",
+        admin_name=MASQ3_ADMIN_NAME, admin_title=MASQ3_ADMIN_TITLE)
+
+
+@app.route("/masquerade/op3/login", methods=["POST"])
+def masq3_login():
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if MASQ3_PASSWORDS.get(username) != password:
+        return render_template("masq3_login.html", error="Invalid username or password.",
+            admin_name=MASQ3_ADMIN_NAME, admin_title=MASQ3_ADMIN_TITLE), 401
+    session["masq3_user"] = username
+    return redirect(url_for("masq3_dashboard"))
+
+
+@app.route("/masquerade/op3/logout")
+def masq3_logout():
+    session.pop("masq3_user", None)
+    return redirect(url_for("masq3_index"))
+
+
+@app.route("/masquerade/op3/host-poc", methods=["POST"])
+def masq3_host_poc():
+    """Not the vulnerable endpoint itself -- this is the challenge's delivery
+    simulation: submit real PoC HTML, and if it's genuine, D. Cho's browser is
+    modeled as visiting it and firing the form, exactly like a real lure would."""
+    html_text = request.form.get("poc") or ""
+    ok, result = masq3_check_poc(html_text)
+    if not ok:
+        return render_template("masq3_login.html", poc_error=result, poc_value=html_text,
+            admin_name=MASQ3_ADMIN_NAME, admin_title=MASQ3_ADMIN_TITLE), 400
+    MASQ3_PASSWORDS[MASQ3_ADMIN_USER] = result
+    return render_template("masq3_login.html", poc_sent=True,
+        admin_name=MASQ3_ADMIN_NAME, admin_title=MASQ3_ADMIN_TITLE)
+
+
+@app.route(MASQ3_VULN_PATH, methods=["GET", "POST"])
+def masq3_ticket():
+    """THE vulnerable endpoint. Mirrors the real advisory's exact URL shape
+    (?p=process_change_password&id=1) and form fields. VULN: no CSRF token anywhere
+    below -- the only thing checked is that *someone* is logged in, via a cookie the
+    browser would attach to this request whether the user meant to send it or not."""
+    if request.method != "POST" or request.args.get("p") != "process_change_password":
+        return redirect(url_for("masq3_dashboard"))
+    who = session.get("masq3_user")
+    if not who:
+        return make_response("Not logged in.", 401)
+    new_pw = request.form.get("new_password") or ""
+    confirm_pw = request.form.get("confirm_password") or ""
+    if not request.form.get("submit") or not new_pw or new_pw != confirm_pw:
+        return make_response("Password change failed.", 400)
+    MASQ3_PASSWORDS[who] = new_pw
+    return redirect(url_for("masq3_dashboard"))
+
+
+@app.route("/masquerade/op3/dashboard")
+def masq3_dashboard():
+    who = session.get("masq3_user")
+    if not who:
+        return render_template("masq3_dashboard.html", authed=False), 401
+    if who == MASQ3_ADMIN_USER:
+        mark_masq_solved(3)                  # only reachable by knowing D. Cho's CURRENT password
+        return render_template("masq3_dashboard.html", authed=True, is_admin=True,
+            flag=MASQ3_FLAG, admin_name=MASQ3_ADMIN_NAME, admin_title=MASQ3_ADMIN_TITLE)
+    return render_template("masq3_dashboard.html", authed=True, is_admin=False)
 
 
 @app.after_request
