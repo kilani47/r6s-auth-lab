@@ -135,11 +135,12 @@ MASQUERADE_MISSIONS = [
               "no password required.",
      "built": True, "path": "/masquerade/op4/"},
     {"id": 5, "code": "05", "name": "Exposed Claim",
-     "wstg": "Token-Based Auth", "topic": "JWT Claims",
+     "wstg": "WSTG-SESS-10", "topic": "JWT Claims",
      "attacker": {"slug": "jackal", "name": "Jackal"},
      "defender": {"slug": "pulse", "name": "Pulse"},
-     "blurb": "Everything inside a JWT is readable. Nothing inside it is private.",
-     "built": False, "path": "#"},
+     "blurb": "This one's signature checks out honestly, every time. The key it's checked "
+              "against doesn't — crack it offline and you can sign anything you want.",
+     "built": True, "path": "/masquerade/op5/"},
     {"id": 6, "code": "06", "name": "Delegated Trust",
      "wstg": "OAuth", "topic": "Attacking OAuth",
      "attacker": {"slug": "hibana", "name": "Hibana"},
@@ -1111,6 +1112,130 @@ def masq4_present_token():
             flag=MASQ4_FLAG, payload_json=masq4_pretty(payload))
     return render_template("masq4_ledger.html", authed=True, is_director=False,
         payload_json=masq4_pretty(payload))
+
+
+# ====================================== MASQUERADE OP 05 — exposed claim (WSTG-SESS-10)
+# Op04 taught "the header can lie about whether to verify." This one is the opposite
+# lesson: the Oregon relay's verifier does everything right -- it hard-codes HS256,
+# it actually recomputes and compares the signature, every single time. The bug isn't
+# in the verification logic at all. It's in what the signature is a promise ABOUT.
+# A signature only proves "someone who knows the secret produced this" -- it says
+# nothing about how easy that secret was to find. This one uses a short, guessable
+# HMAC key (the kind real teams pick when a signing secret feels like an
+# implementation detail, not a credential) and a payload that leaks a second claim
+# that never should have been in a token that anyone holding it can read in plain
+# text. Two different findings, same root cause: treating a JWT's contents and the
+# key that signs them as less sensitive than they actually are.
+MASQ5_USER = "field.agent"
+MASQ5_PASSWORD = "Oregon2024!"                    # given directly -- this op is not about cracking it
+MASQ5_FIELD_ROLE = "field_agent"
+MASQ5_LEAD_ROLE = "dispatch_lead"
+MASQ5_SUPPORT_PIN = "4821"          # secondary finding: sensitive data that never belonged in a JWT
+MASQ5_FLAG = "R6S{jackal_tracked_the_weak_secret_to_dispatch_lead}"
+MASQ5_SECRET = "relay41"            # weak on purpose -- sits in wordlists/op5_jwt_secrets.txt
+
+
+def masq5_b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+
+def masq5_b64url_decode(s: str) -> bytes:
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+
+def masq5_sign(header_b64, payload_b64, secret):
+    signing_input = f"{header_b64}.{payload_b64}".encode()
+    digest = hmac.new(secret.encode(), signing_input, hashlib.sha256).digest()
+    return masq5_b64url_encode(digest)
+
+
+def masq5_issue_token(username, role):
+    header = {"typ": "JWT", "alg": "HS256"}
+    payload = {"sub": username, "role": role, "support_pin": MASQ5_SUPPORT_PIN, "iat": int(time.time())}
+    h_b64 = masq5_b64url_encode(json.dumps(header, separators=(",", ":")).encode())
+    p_b64 = masq5_b64url_encode(json.dumps(payload, separators=(",", ":")).encode())
+    return f"{h_b64}.{p_b64}.{masq5_sign(h_b64, p_b64, MASQ5_SECRET)}", header, payload
+
+
+def masq5_verify_token(token):
+    """Returns (ok, payload_dict_or_error). Unlike Op04, there is no algorithm
+    confusion to exploit here -- only HS256 is ever accepted, and the signature is
+    genuinely, unconditionally recomputed and compared. VULN: MASQ5_SECRET is weak
+    enough to recover by trying candidates offline (see wordlists/op5_jwt_secrets.txt)
+    -- once known, it signs any payload an attacker wants, correctly."""
+    parts = (token or "").split(".")
+    if len(parts) != 3:
+        return False, "Malformed token -- expected three dot-separated parts."
+    h_b64, p_b64, sig_b64 = parts
+    try:
+        header = json.loads(masq5_b64url_decode(h_b64))
+        payload = json.loads(masq5_b64url_decode(p_b64))
+    except Exception:
+        return False, "Header or payload isn't valid base64url-encoded JSON."
+    if str(header.get("alg", "")).strip().upper() != "HS256":
+        return False, "Only HS256 is accepted."
+    if not hmac.compare_digest(masq5_sign(h_b64, p_b64, MASQ5_SECRET), sig_b64):
+        return False, "Signature does not match."
+    return True, payload
+
+
+def masq5_pretty(obj):
+    return json.dumps(obj, indent=2)
+
+
+@app.route("/masquerade/op5/")
+def masq5_index():
+    return render_template("masq5_login.html")
+
+
+@app.route("/masquerade/op5/login", methods=["POST"])
+def masq5_login():
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if username != MASQ5_USER or password != MASQ5_PASSWORD:
+        return render_template("masq5_login.html", error="Invalid username or password."), 401
+    token, header, payload = masq5_issue_token(username, MASQ5_FIELD_ROLE)
+    return render_template("masq5_login.html", token=token,
+        header_json=masq5_pretty(header), payload_json=masq5_pretty(payload))
+
+
+def masq5_relay_result(token):
+    if not token:
+        return None, "No token presented.", 401
+    ok, result = masq5_verify_token(token)
+    if not ok:
+        return None, result, 401
+    return result, None, 200
+
+
+@app.route("/masquerade/op5/relay")
+def masq5_relay():
+    """The real protected resource -- REST-style, Authorization: Bearer, JSON in/out."""
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+    payload, error, status = masq5_relay_result(token)
+    if error:
+        return jsonify({"error": error}), status
+    if payload.get("role") == MASQ5_LEAD_ROLE:
+        mark_masq_solved(5)
+        return jsonify({"ok": True, "role": payload.get("role"), "flag": MASQ5_FLAG})
+    return jsonify({"ok": True, "role": payload.get("role"), "sub": payload.get("sub")})
+
+
+@app.route("/masquerade/op5/present-token", methods=["POST"])
+def masq5_present_token():
+    """Convenience wrapper for the SAME check as /relay, for players working from
+    the browser instead of curl/Burp -- not a separate, easier code path."""
+    token = (request.form.get("token") or "").strip()
+    payload, error, status = masq5_relay_result(token)
+    if error:
+        return render_template("masq5_relay.html", authed=False, error=error), status
+    if payload.get("role") == MASQ5_LEAD_ROLE:
+        mark_masq_solved(5)
+        return render_template("masq5_relay.html", authed=True, is_lead=True,
+            flag=MASQ5_FLAG, payload_json=masq5_pretty(payload))
+    return render_template("masq5_relay.html", authed=True, is_lead=False,
+        payload_json=masq5_pretty(payload))
 
 
 @app.after_request
