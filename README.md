@@ -52,12 +52,12 @@ Each operation has its own briefing + debrief, grouped by campaign folder:
 | 01 | The Teller's Trust | **Iana** ⚔ **Alibi** | WSTG-SESS-01 · Cookie tampering |
 | 02 | Stolen Keys | **Zero** ⚔ **Vigil** | WSTG-SESS-03 · Session fixation |
 | 03 | One Click | **Ying** ⚔ **Melusi** | WSTG-SESS-05 · CSRF |
-| 04 | Signed, Not Sealed | Kali ⚔ Echo | JWT authentication |
+| 04 | Signed, Not Sealed | **Kali** ⚔ **Echo** | WSTG-SESS-10 · JWT "none" algorithm |
 | 05 | Exposed Claim | Jackal ⚔ Pulse | JWT claims |
 | 06 | Delegated Trust | Hibana ⚔ Bandit | Attacking OAuth |
 | 07 | Unlimited Attempts | Ash ⚔ Warden | Bypassing 2FA |
 
-**In progress** — Operations 01–03 ship today; the rest reveal on Command as they're built. Docs
+**In progress** — Operations 01–04 ship today; the rest reveal on Command as they're built. Docs
 under [`masquerade/`](masquerade/).
 
 Both campaigns unlock one operation at a time and reveal the next the moment the current one is
@@ -139,7 +139,8 @@ with, endorsed by, or sponsored by Ubisoft Entertainment.**
 - **Rainbow Six Siege assets** used for theming — operator names, operator icon artwork
   (`static/img/ops/`), map/location wallpapers (`static/img/intro-wall.jpg`,
   `static/img/masq1-bank-map.jpg`, `static/img/masq2-tower-map.jpg`,
-  `static/img/masq3-coastline-map.jpg`), and the victory video clips (`static/img/victory-op*.*`,
+  `static/img/masq3-coastline-map.jpg`, `static/img/masq4-chalet-map.jpg`), and the victory
+  video clips (`static/img/victory-op*.*`,
   `static/img/victory-masq*.*`, `static/img/lib/`) — are **not** covered by that license. They
   remain the property of **Ubisoft Entertainment** and/or their respective
   rights holders, used here solely for non-commercial educational/thematic purposes. No

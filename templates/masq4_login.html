@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Chalet Concierge // Sign In{% endblock %}
+{% block body %}
+  <div class="relative min-h-screen">
+    <img src="/static/img/masq4-chalet-map.jpg" alt="" onerror="this.style.display='none'"
+         class="absolute inset-0 w-full h-full object-cover opacity-40">
+    <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
+  <a href="/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Command</a>
+  <div class="min-h-screen flex flex-col items-center justify-center gap-5 p-6">
+    <div class="w-full max-w-[480px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="relative flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <img src="/static/img/ops/echo.svg" alt="Echo" class="w-[70px] h-[70px] shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,.5)]">
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-atk uppercase">Masquerade 04 · Signed, Not Sealed</div>
+          <h1 class="my-1 text-xl tracking-wide font-display font-bold">Chalet Concierge</h1>
+          <div class="text-[12px] text-dim">Stateless Auth · Bearer Token</div>
+        </div>
+        <div class="absolute top-3.5 right-3.5" title="Your operator: Kali">
+          <img src="/static/img/ops/kali.svg" alt="Kali" class="w-[30px] h-[30px] opacity-85">
+        </div>
+      </div>
+
+      <div class="mx-6 mt-4 px-3.5 py-2.5 rounded-sm text-[12px] border border-line bg-[#0c1116] text-dim">
+        Test account provided — this mission isn't about the password:<br>
+        <span class="text-txt font-semibold">retreat.member</span> / <span class="text-txt font-semibold">Chalet2024!</span>
+      </div>
+
+      {% if error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/masquerade/op4/login" class="px-6 py-5">
+        <label for="u" class="block text-[12px] text-dim mt-1 mb-1.5 tracking-wide uppercase">Member ID</label>
+        <input id="u" name="username" autocomplete="off" placeholder="retreat.member"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+        <label for="p" class="block text-[12px] text-dim mt-3.5 mb-1.5 tracking-wide uppercase">Password</label>
+        <input id="p" name="password" type="password" autocomplete="off"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+        <button type="submit"
+                class="w-full mt-5 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Sign In</button>
+      </form>
+
+      {% if token %}
+      <div class="px-6 pb-6">
+        <div class="text-[11px] tracking-widest text-dim uppercase mb-2">Your Token</div>
+        <div class="px-3.5 py-3 rounded-sm border border-line bg-[#0c1116] text-[11px] font-mono text-[#eafff0] break-all select-all">{{ token }}</div>
+
+        <div class="grid sm:grid-cols-2 gap-3 mt-3">
+          <div>
+            <div class="text-[10px] tracking-widest text-dim uppercase mb-1.5">Header (decoded)</div>
+            <pre class="px-3 py-2.5 rounded-sm border border-line bg-[#0c1116] text-[11px] font-mono text-def overflow-x-auto">{{ header_json }}</pre>
+          </div>
+          <div>
+            <div class="text-[10px] tracking-widest text-dim uppercase mb-1.5">Payload (decoded)</div>
+            <pre class="px-3 py-2.5 rounded-sm border border-line bg-[#0c1116] text-[11px] font-mono text-atk overflow-x-auto">{{ payload_json }}</pre>
+          </div>
+        </div>
+        <div class="mt-3 text-[11px] text-dim leading-relaxed">
+          That's not encrypted — it's base64url. Anyone holding this string can read every
+          field in it without a key. The only thing standing between "read" and "rewrite" is
+          whatever the server does with the third segment.
+        </div>
+      </div>
+      {% else %}
+      <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">No session cookie, no server-side lookup — just a signed token you carry yourself.</div>
+      {% endif %}
+    </div>
+
+    <div class="w-full max-w-[480px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">📜</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-def uppercase">Restricted</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">The Director's Ledger</h1>
+          <div class="text-[12px] text-dim">Present a token · GET /ledger, Authorization: Bearer</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        Reachable directly with any HTTP client — <code class="text-txt">curl</code>, Burp,
+        Postman — by sending your token as <code class="text-txt">Authorization: Bearer
+        &lt;token&gt;</code> to <code class="text-txt">/masquerade/op4/ledger</code>. Paste one
+        below instead if you'd rather see the result rendered here.
+      </div>
+
+      <form method="post" action="/masquerade/op4/present-token" class="px-6 py-5">
+        <label for="tok" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">Token</label>
+        <textarea id="tok" name="token" rows="4" spellcheck="false" placeholder="header.payload.signature"
+                  class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-[12.5px] font-mono outline-none focus:border-def resize-y"></textarea>
+        <button type="submit"
+                class="w-full mt-4 py-3 bg-def text-[#04101c] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Present to the Ledger</button>
+      </form>
+      <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">The token is decoded and verified — never executed.</div>
+    </div>
+  </div>
+  </div>
+{% endblock %}

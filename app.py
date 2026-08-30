@@ -12,6 +12,7 @@ DELIBERATELY VULNERABLE per-mission. Local educational lab only.
 import time
 import random
 import re
+import json
 import base64
 import hashlib
 import hmac
@@ -126,11 +127,13 @@ MASQUERADE_MISSIONS = [
               "browser resets their password for you.",
      "built": True, "path": "/masquerade/op3/"},
     {"id": 4, "code": "04", "name": "Signed, Not Sealed",
-     "wstg": "Token-Based Auth", "topic": "JWT Authentication",
+     "wstg": "WSTG-SESS-10", "topic": "JWT Authentication",
      "attacker": {"slug": "kali", "name": "Kali"},
      "defender": {"slug": "echo", "name": "Echo"},
-     "blurb": "A token's signature only matters if something actually checks it.",
-     "built": False, "path": "#"},
+     "blurb": "A token's signature only matters if something actually checks it. Tell the "
+              "verifier there's nothing to check, and it believes you — no key, no victim, "
+              "no password required.",
+     "built": True, "path": "/masquerade/op4/"},
     {"id": 5, "code": "05", "name": "Exposed Claim",
      "wstg": "Token-Based Auth", "topic": "JWT Claims",
      "attacker": {"slug": "jackal", "name": "Jackal"},
@@ -984,6 +987,130 @@ def masq3_dashboard():
         return render_template("masq3_dashboard.html", authed=True, is_admin=True,
             flag=MASQ3_FLAG, admin_name=MASQ3_ADMIN_NAME, admin_title=MASQ3_ADMIN_TITLE)
     return render_template("masq3_dashboard.html", authed=True, is_admin=False)
+
+
+# ====================================== MASQUERADE OP 04 — the "none" algorithm (WSTG-SESS-10)
+# The Chalet Concierge is stateless auth done the JWT way: no session, no server-side
+# lookup, just a signed token the client carries and presents on every request. The
+# server's whole job is to recompute that signature and compare -- EXCEPT this server
+# reads which algorithm to use for that check from the token's own header. The header
+# is just base64 -- attacker-controlled, exactly like every other part of the token.
+# Set alg to "none" and the verifier skips the signature check entirely, trusting
+# whatever role claim sits in the payload. No brute force, no stolen credential, no
+# victim to trick -- unlike Ops 02 and 03, this one needs nobody else's account at all.
+# An attacker manufactures a fully "valid" credential from nothing.
+MASQ4_USER = "retreat.member"
+MASQ4_PASSWORD = "Chalet2024!"                    # given directly -- this op is not about cracking it
+MASQ4_MEMBER_ROLE = "member"
+MASQ4_DIRECTOR_ROLE = "director"
+MASQ4_FLAG = "R6S{kali_forged_alg_none_into_the_directors_role}"
+MASQ4_SECRET = "chalet-director-2024"             # fixed HMAC key -- real, never shown to the player
+
+
+def masq4_b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+
+def masq4_b64url_decode(s: str) -> bytes:
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+
+def masq4_sign(header_b64, payload_b64):
+    signing_input = f"{header_b64}.{payload_b64}".encode()
+    digest = hmac.new(MASQ4_SECRET.encode(), signing_input, hashlib.sha256).digest()
+    return masq4_b64url_encode(digest)
+
+
+def masq4_issue_token(username, role):
+    header = {"typ": "JWT", "alg": "HS256"}
+    payload = {"sub": username, "role": role, "iat": int(time.time())}
+    h_b64 = masq4_b64url_encode(json.dumps(header, separators=(",", ":")).encode())
+    p_b64 = masq4_b64url_encode(json.dumps(payload, separators=(",", ":")).encode())
+    return f"{h_b64}.{p_b64}.{masq4_sign(h_b64, p_b64)}", header, payload
+
+
+def masq4_verify_token(token):
+    """Returns (ok, payload_dict_or_error). VULN: trusts the client-controlled `alg`
+    field to decide HOW (or whether) to verify -- including "none", accepted
+    case-insensitively, exactly like the real vulnerable libraries this bug class
+    is named after."""
+    parts = (token or "").split(".")
+    if len(parts) != 3:
+        return False, "Malformed token -- expected three dot-separated parts."
+    h_b64, p_b64, sig_b64 = parts
+    try:
+        header = json.loads(masq4_b64url_decode(h_b64))
+        payload = json.loads(masq4_b64url_decode(p_b64))
+    except Exception:
+        return False, "Header or payload isn't valid base64url-encoded JSON."
+    alg = str(header.get("alg", "")).strip().lower()
+    if alg == "none":
+        return True, payload                          # VULN: zero signature verification
+    if alg == "hs256":
+        if hmac.compare_digest(masq4_sign(h_b64, p_b64), sig_b64):
+            return True, payload
+        return False, "Signature does not match."
+    return False, f"Unsupported algorithm: {header.get('alg')!r}"
+
+
+def masq4_pretty(obj):
+    return json.dumps(obj, indent=2)
+
+
+@app.route("/masquerade/op4/")
+def masq4_index():
+    return render_template("masq4_login.html")
+
+
+@app.route("/masquerade/op4/login", methods=["POST"])
+def masq4_login():
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if username != MASQ4_USER or password != MASQ4_PASSWORD:
+        return render_template("masq4_login.html", error="Invalid username or password."), 401
+    token, header, payload = masq4_issue_token(username, MASQ4_MEMBER_ROLE)
+    return render_template("masq4_login.html", token=token,
+        header_json=masq4_pretty(header), payload_json=masq4_pretty(payload))
+
+
+def masq4_ledger_result(token):
+    if not token:
+        return None, "No token presented.", 401
+    ok, result = masq4_verify_token(token)
+    if not ok:
+        return None, result, 401
+    return result, None, 200
+
+
+@app.route("/masquerade/op4/ledger")
+def masq4_ledger():
+    """The real protected resource -- a REST-style endpoint, exactly like the notes
+    describe: Authorization: Bearer <token>, JSON in, JSON out, no session lookup."""
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+    payload, error, status = masq4_ledger_result(token)
+    if error:
+        return jsonify({"error": error}), status
+    if payload.get("role") == MASQ4_DIRECTOR_ROLE:
+        mark_masq_solved(4)
+        return jsonify({"ok": True, "role": payload.get("role"), "flag": MASQ4_FLAG})
+    return jsonify({"ok": True, "role": payload.get("role"), "sub": payload.get("sub")})
+
+
+@app.route("/masquerade/op4/present-token", methods=["POST"])
+def masq4_present_token():
+    """Convenience wrapper for the SAME check as /ledger, for players working from
+    the browser instead of curl/Burp -- not a separate, easier code path."""
+    token = (request.form.get("token") or "").strip()
+    payload, error, status = masq4_ledger_result(token)
+    if error:
+        return render_template("masq4_ledger.html", authed=False, error=error), status
+    if payload.get("role") == MASQ4_DIRECTOR_ROLE:
+        mark_masq_solved(4)
+        return render_template("masq4_ledger.html", authed=True, is_director=True,
+            flag=MASQ4_FLAG, payload_json=masq4_pretty(payload))
+    return render_template("masq4_ledger.html", authed=True, is_director=False,
+        payload_json=masq4_pretty(payload))
 
 
 @app.after_request
