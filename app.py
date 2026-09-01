@@ -215,6 +215,29 @@ def masq_reset_progress():
     return redirect(url_for("hub"))
 
 
+# Per-operation reset: clears just ONE mission's "cleared" badge and its own
+# session-tracked state (login, stage progress), without touching any other
+# mission's progress or the campaign-wide reset above. Custom, non-Flask-session
+# cookies each op issues (bank_session, guest_sid) aren't swept by the generic
+# session-key wipe below, so they're listed explicitly here.
+MASQ_RESET_COOKIES = {1: ["bank_session"], 2: ["guest_sid"]}
+
+
+@app.route("/masquerade/reset-op/<int:mid>")
+def masq_reset_one(mid):
+    s = masq_solved_set()
+    s.discard(mid)
+    session["masq_solved"] = sorted(s)
+    prefix = f"masq{mid}_"
+    for key in list(session.keys()):
+        if key.startswith(prefix):
+            session.pop(key, None)
+    resp = make_response(redirect(request.referrer or url_for("hub")))
+    for cookie_name in MASQ_RESET_COOKIES.get(mid, []):
+        resp.delete_cookie(cookie_name)
+    return resp
+
+
 # ================================================ OPERATION 01 — vulnerable app
 ROSTER = {
     "g.mendel":  {"display": "Gilles Mendel  [Montagne]", "target": True},
