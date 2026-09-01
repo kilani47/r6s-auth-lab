@@ -7,7 +7,7 @@
     <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
   <a href="/masquerade/op6/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ The Clubhouse</a>
   <div class="min-h-screen flex items-center justify-center p-6">
-    <div class="w-full max-w-[440px] bg-panel2/95 border border-line hud-frame hud-frame-win shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+    <div class="w-full max-w-[560px] bg-panel2/95 border border-line hud-frame hud-frame-win shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
       <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
         <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🖨️</div>
         <div>
@@ -15,17 +15,43 @@
           <h1 class="my-1 text-lg tracking-wide font-display font-bold">Callback Received</h1>
         </div>
       </div>
+
+      {% if gallery is defined %}
+      <div class="px-6 pt-5 text-[12px] text-dim leading-relaxed">
+        <span class="text-win">✅ Code received normally</span> at the kiosk's real, registered
+        callback. The kiosk exchanged it with its own real <code class="text-txt">client_secret</code>
+        and fetched exactly one gallery — <b class="text-txt">{{ owner }}'s</b>, the member who
+        actually clicked Allow. This is what a correctly-working OAuth flow looks like end to end.
+      </div>
+      <div class="mx-6 mt-3 px-3.5 py-2.5 rounded-sm border border-line bg-[#0c1116] text-[11px] font-mono text-dim break-all">code={{ code }}</div>
+
+      <div class="text-[10px] tracking-widest text-dim uppercase mx-6 mt-4 mb-1.5">{{ owner }}'s Gallery</div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6 pb-6">
+        {% for p in gallery %}
+        <div class="border border-line bg-[#0c1116] p-2 rounded-sm">
+          <div class="w-full h-20 rounded-sm bg-[#141b23] flex items-center justify-center text-3xl">{{ p.emoji }}</div>
+          <div class="mt-1.5 text-[9.5px] text-dim font-mono truncate">{{ p.caption }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="mx-6 mb-6 px-3.5 py-2.5 rounded-sm border border-line bg-[#0c1116] text-[11px] text-dim leading-relaxed">
+        Normal photos, nothing hidden here — this account has no private item queued.
+      </div>
+      {% elif code %}
       <div class="px-6 py-8 text-center">
-        {% if code %}
-        <div class="text-5xl mb-4">✅</div>
-        <div class="font-mono text-[15px] text-win mb-2">Code received normally.</div>
+        <div class="text-5xl mb-4">⚠️</div>
+        <div class="font-mono text-[13px] text-red mb-2">{{ exchange_error }}</div>
         <div class="px-3.5 py-2.5 rounded-sm border border-line bg-[#0c1116] text-[12px] font-mono text-txt break-all mb-3">code={{ code }}</div>
-        <div class="text-[13px] text-dim leading-relaxed">This is exactly how OAuth is supposed to work — the kiosk's real callback receiving a code the member approved for it, specifically.</div>
-        {% else %}
+      </div>
+      {% else %}
+      <div class="px-6 py-8 text-center">
         <div class="text-5xl mb-4">🤷</div>
         <div class="font-mono text-[15px] text-dim">No code in this request.</div>
-        {% endif %}
-        <a href="/masquerade/op6/" class="inline-block mt-5 px-5 py-2.5 rounded-sm border border-line text-dim hover:border-atk hover:text-txt transition text-[13px]">← The Clubhouse</a>
+      </div>
+      {% endif %}
+
+      <div class="px-6 pb-6">
+        <a href="/masquerade/op6/" class="inline-block px-5 py-2.5 rounded-sm border border-line text-dim hover:border-atk hover:text-txt transition text-[13px]">← The Clubhouse</a>
       </div>
     </div>
   </div>

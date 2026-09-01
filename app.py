@@ -1300,6 +1300,27 @@ MASQ6_CODES = {}        # code -> {"redirect_uri":..., "consumed": bool, "owner"
 MASQ6_TOKENS = {}        # access_token -> {"scope":..., "owner": <whose gallery this unlocks>}
 MASQ6_CAPTURED = []      # [{"code":..., "redirect_uri":...}] -- the "attacker's" access log
 
+# Real gallery contents per member -- what a token for that owner actually unlocks.
+# club.member's own gallery is just normal, boring club photos -- that's what
+# legitimate access to your OWN resource looks like. N. Kruger's gallery has the
+# same kind of normal photos PLUS one private item queued for kiosk pickup only --
+# THAT'S the actual thing being protected, and the flag lives on it specifically.
+# Reaching it is what "solved" means here, not merely holding any valid token.
+MASQ6_GALLERIES = {
+    MASQ6_USER: [
+        {"emoji": "🍻", "caption": "clubhouse_bar.jpg", "desc": "Bar re-opening night"},
+        {"emoji": "🎱", "caption": "league_table.jpg", "desc": "May pool league standings"},
+        {"emoji": "🛠️", "caption": "patio_reno.jpg", "desc": "New patio furniture"},
+    ],
+    MASQ6_NPC_NAME: [
+        {"emoji": "🍻", "caption": "clubhouse_bar.jpg", "desc": "Bar re-opening night"},
+        {"emoji": "🤝", "caption": "back_room_meeting.jpg", "desc": "Committee back-room meeting"},
+        {"emoji": "🎂", "caption": "n_kruger_bday.jpg", "desc": "N. Kruger's birthday"},
+        {"private": True, "caption": "print_queue_private.jpg",
+         "desc": "Queued for kiosk pickup only -- never shared with anyone else"},
+    ],
+}
+
 
 def masq6_new_code():
     return secrets.token_hex(4)               # deliberately NOT low-entropy -- Stage 1 isn't about guessing codes
@@ -1367,9 +1388,21 @@ def masq6_approve():
 @app.route("/masquerade/op6/callback")
 def masq6_callback():
     """The kiosk's REAL, registered callback -- what a correctly-validated
-    redirect_uri would always point back to."""
+    redirect_uri would always point back to. The kiosk itself holds the real
+    client_secret and exchanges the code immediately, then fetches exactly one
+    member's gallery -- whoever actually clicked Allow. This is what a normal,
+    correctly-working OAuth flow looks like end to end, not just "code received"."""
     code = request.args.get("code", "")
-    return render_template("masq6_callback.html", code=code)
+    if not code:
+        return render_template("masq6_callback.html", code=None)
+    status, data = masq6_do_token_exchange("authorization_code", code,
+        MASQ6_CLIENT_ID, MASQ6_CLIENT_SECRET, MASQ6_LEGIT_REDIRECT)
+    if status != 200:
+        return render_template("masq6_callback.html", code=code,
+            exchange_error=data.get("error_description") or data.get("error"))
+    owner = data["belongs_to"]
+    return render_template("masq6_callback.html", code=code, owner=owner,
+        gallery=MASQ6_GALLERIES.get(owner, []))
 
 
 @app.route("/masquerade/op6/lure-member", methods=["POST"])
@@ -1419,7 +1452,6 @@ def masq6_do_token_exchange(grant_type, code, client_id, client_secret, redirect
     entry["consumed"] = True
     token = masq6_new_token()
     MASQ6_TOKENS[token] = {"scope": MASQ6_SCOPE, "owner": entry["owner"]}
-    session["masq6_stage2"] = True
     return 200, {"access_token": token, "token_type": "bearer", "scope": MASQ6_SCOPE, "belongs_to": entry["owner"]}
 
 
@@ -1429,6 +1461,8 @@ def masq6_token():
         request.form.get("grant_type", ""), request.form.get("code", ""),
         request.form.get("client_id", ""), request.form.get("client_secret", ""),
         request.form.get("redirect_uri", ""))
+    if status == 200:
+        session["masq6_stage2"] = True
     return jsonify(data), status
 
 
@@ -1441,6 +1475,8 @@ def masq6_exchange_code_form():
     secret_guess = (request.form.get("secret") or "").strip()
     redirect_uri = MASQ6_CODES.get(code, {}).get("redirect_uri", "")
     _status, data = masq6_do_token_exchange("authorization_code", code, MASQ6_CLIENT_ID, secret_guess, redirect_uri)
+    if _status == 200:
+        session["masq6_stage2"] = True
     return render_template("masq6_index.html",
         exchange_result=data, npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE,
         captured=list(reversed(MASQ6_CAPTURED)),
@@ -1451,15 +1487,21 @@ def masq6_exchange_code_form():
 def masq6_photos_me():
     """The real protected resource. VULN: reachable with nothing but a guessed
     4-digit token -- no rate limit here either, and no requirement that this
-    token was ever obtained through Stages 1-2 at all."""
+    token was ever obtained through Stages 1-2 at all. The response is that
+    owner's REAL gallery -- your own token gets your own boring photos; only a
+    token stolen from someone else ever surfaces their private item, and the
+    flag lives there, not floating free on every successful request."""
     token = request.args.get("access_token", "")
     if token not in MASQ6_TOKENS:
         return jsonify({"error": "invalid_token"}), 401
-    mark_masq_solved(6)
     owner = MASQ6_TOKENS[token]["owner"]
-    return jsonify({"ok": True, "scope": MASQ6_TOKENS[token]["scope"], "gallery_owner": owner,
-        "photos": ["clubhouse_bar.jpg", "back_room_meeting.jpg", "n_kruger_bday.jpg"],
-        "flag": MASQ6_FLAG})
+    gallery = MASQ6_GALLERIES.get(owner, [])
+    resp = {"ok": True, "scope": MASQ6_TOKENS[token]["scope"], "gallery_owner": owner,
+        "photos": [p["caption"] for p in gallery]}
+    if any(p.get("private") for p in gallery):
+        mark_masq_solved(6)
+        resp["flag"] = MASQ6_FLAG
+    return jsonify(resp)
 
 
 @app.route("/masquerade/op6/present-resource", methods=["POST"])
@@ -1468,11 +1510,14 @@ def masq6_present_resource():
     token = (request.form.get("access_token") or "").strip()
     if token not in MASQ6_TOKENS:
         return render_template("masq6_victory.html", authed=False), 401
-    mark_masq_solved(6)
     owner = MASQ6_TOKENS[token]["owner"]
-    is_victim = owner != session.get("masq6_user", MASQ6_USER)
-    return render_template("masq6_victory.html", authed=True, flag=MASQ6_FLAG,
-        owner=owner, is_victim=is_victim)
+    gallery = MASQ6_GALLERIES.get(owner, [])
+    is_victim = any(p.get("private") for p in gallery)
+    if is_victim:
+        mark_masq_solved(6)
+    return render_template("masq6_victory.html", authed=True,
+        flag=MASQ6_FLAG if is_victim else None, owner=owner, is_victim=is_victim,
+        gallery=gallery, npc_name=MASQ6_NPC_NAME)
 
 
 @app.after_request
