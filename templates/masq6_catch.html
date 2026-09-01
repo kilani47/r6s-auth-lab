@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}attacker-catch // access log{% endblock %}
+{% block body %}
+  <div class="relative min-h-screen">
+    <img src="/static/img/masq6-clubhouse-map.jpg" alt="" onerror="this.style.display='none'"
+         class="absolute inset-0 w-full h-full object-cover opacity-40">
+    <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
+  <a href="/masquerade/op6/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ The Clubhouse</a>
+  <div class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🗂️</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-def uppercase">Your Server</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Access Log</h1>
+          <div class="text-[12px] text-dim">/masquerade/op6/attacker-catch</div>
+        </div>
+      </div>
+
+      <div class="px-6 py-5">
+        <div class="text-[12px] text-dim leading-relaxed mb-4">
+          Stand-in for whatever server you actually control at a real redirect_uri — in the real
+          world this would be your own access log, not ours.
+        </div>
+        {% if captured %}
+        <div class="space-y-2">
+          {% for c in captured %}
+          <div class="px-3.5 py-2.5 rounded-sm border border-line bg-[#0c1116]">
+            <div class="text-[10px] tracking-widest text-dim uppercase">GET {{ c.redirect_uri }}?code=…</div>
+            <div class="text-[13px] font-mono text-atk mt-1 break-all">{{ c.code }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-[13px] text-dim text-center py-6">Nothing here yet. Lure a member first.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  </div>
+{% endblock %}

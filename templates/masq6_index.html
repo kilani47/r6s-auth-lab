@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}The Clubhouse // Member Gallery{% endblock %}
+{% block body %}
+  <div class="relative min-h-screen">
+    <img src="/static/img/masq6-clubhouse-map.jpg" alt="" onerror="this.style.display='none'"
+         class="absolute inset-0 w-full h-full object-cover opacity-40">
+    <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
+  <a href="/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Command</a>
+  <div class="min-h-screen flex flex-col items-center justify-center gap-5 p-6">
+
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="relative flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <img src="/static/img/ops/bandit.svg" alt="Bandit" class="w-[70px] h-[70px] shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,.5)]">
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-atk uppercase">Masquerade 06 · Delegated Trust</div>
+          <h1 class="my-1 text-xl tracking-wide font-display font-bold">The Clubhouse</h1>
+          <div class="text-[12px] text-dim">Member Gallery · OAuth-Delegated Print Kiosk Access</div>
+        </div>
+        <div class="absolute top-3.5 right-3.5" title="Your operator: Hibana">
+          <img src="/static/img/ops/hibana.svg" alt="Hibana" class="w-[30px] h-[30px] opacity-85">
+        </div>
+      </div>
+
+      <div class="mx-6 mt-4 px-3.5 py-2.5 rounded-sm text-[12px] border border-line bg-[#0c1116] text-dim">
+        Test account provided — this mission isn't about the password:<br>
+        <span class="text-txt font-semibold">club.member</span> / <span class="text-txt font-semibold">Clubhouse2024!</span>
+      </div>
+
+      {% if error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/masquerade/op6/login" class="px-6 py-5">
+        <label for="u" class="block text-[12px] text-dim mt-1 mb-1.5 tracking-wide uppercase">Member ID</label>
+        <input id="u" name="username" autocomplete="off" placeholder="club.member"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+        <label for="p" class="block text-[12px] text-dim mt-3.5 mb-1.5 tracking-wide uppercase">Password</label>
+        <input id="p" name="password" type="password" autocomplete="off"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+        <button type="submit"
+                class="w-full mt-5 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Sign In</button>
+      </form>
+      <div class="px-6 pb-5 text-center">
+        <a href="/masquerade/op6/oauth/authorize?response_type=code&client_id=print_kiosk&redirect_uri=%2Fmasquerade%2Fop6%2Fcallback&scope=view_gallery"
+           class="text-[12px] text-def hover:underline">→ Authorize Print Kiosk yourself (the normal flow)</a>
+      </div>
+    </div>
+
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🎣</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-def uppercase">Stage 1</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Lure a Member</h1>
+          <div class="text-[12px] text-dim">{{ npc_name }} · {{ npc_title }} · always logged in</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        Print Kiosk's real callback is <code class="text-txt">/masquerade/op6/callback</code> — but the
+        authorize endpoint never checks that a request's <code class="text-txt">redirect_uri</code>
+        actually matches it. Send {{ npc_name }} a link with a
+        <code class="text-txt">redirect_uri</code> of your choosing, and whatever authorization code
+        gets issued goes wherever you pointed it.
+      </div>
+
+      {% if lure_error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ lure_error }}</div>
+      {% endif %}
+      {% if lure_sent %}
+      <div class="mx-6 mt-4 px-3.5 py-3 rounded-sm text-[13px] border bg-win/[.08] border-win/40 text-[#9be3a7]">
+        {{ npc_name }} opened the link and approved access. The resulting code was sent to
+        <code class="text-[#eafff0]">{{ lure_sent }}</code>.
+      </div>
+      {% endif %}
+
+      <form method="post" action="/masquerade/op6/lure-member" class="px-6 py-5">
+        <label for="ru" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">redirect_uri to send</label>
+        <input id="ru" name="redirect_uri" autocomplete="off" placeholder="/masquerade/op6/attacker-catch"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-[12.5px] font-mono outline-none focus:border-def">
+        <button type="submit"
+                class="w-full mt-4 py-3 bg-def text-[#04101c] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Send Authorize Link</button>
+      </form>
+
+      <div class="px-6 pb-5">
+        <div class="text-[10px] tracking-widest text-dim uppercase mb-2">Attacker's Mailbox — <a href="/masquerade/op6/attacker-catch" class="text-def hover:underline normal-case tracking-normal">view full log →</a></div>
+        {% if captured %}
+        <div class="space-y-1.5">
+          {% for c in captured[:3] %}
+          <div class="px-3 py-2 rounded-sm border border-line bg-[#0c1116] text-[11px] font-mono text-atk">code={{ c.code }}</div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-[12px] text-dim">Nothing captured yet.</div>
+        {% endif %}
+      </div>
+
+      {% if stage1 %}
+      <div class="mx-6 mb-5 px-3.5 py-3 rounded-sm border border-win/40 bg-win/[.06] flex items-center gap-3">
+        <img src="/static/img/victory-masq6-stage1.gif" alt="" class="w-16 h-10 object-cover rounded-sm border border-win/30"
+             onerror="this.style.display='none'">
+        <div class="text-[12px] text-win font-semibold">✔ Stage 1 cleared — you're holding a stolen authorization code.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🔑</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-atk uppercase">Stage 2</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Exchange a Code</h1>
+          <div class="text-[12px] text-dim">POST /masquerade/op6/oauth/token</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        A code alone isn't a token — the token endpoint also wants
+        <code class="text-txt">client_id</code> and <code class="text-txt">client_secret</code> for
+        <code class="text-txt">print_kiosk</code>. There's no rate limit on wrong secrets here.
+        <code class="text-txt">client_id</code> is fixed to <code class="text-txt">print_kiosk</code>
+        automatically below — this panel is for testing one guess at a time; real brute-forcing means
+        scripting many requests straight to the endpoint above.
+      </div>
+
+      {% if exchange_result %}
+      <div class="mx-6 mt-4 px-3.5 py-3 rounded-sm text-[12px] border {% if exchange_result.access_token %}bg-win/[.08] border-win/40 text-[#9be3a7]{% else %}bg-red/[.08] border-red/40 text-[#ff9a9a]{% endif %} font-mono">
+        {{ exchange_result | tojson(indent=2) }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/masquerade/op6/exchange-code" class="px-6 py-5">
+        <label for="ec" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">code</label>
+        <input id="ec" name="code" autocomplete="off"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-[12.5px] font-mono outline-none focus:border-atk">
+        <label for="es" class="block text-[12px] text-dim mt-3 mb-1.5 tracking-wide uppercase">client_secret guess</label>
+        <input id="es" name="secret" autocomplete="off"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-[12.5px] font-mono outline-none focus:border-atk">
+        <button type="submit"
+                class="w-full mt-4 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Attempt Exchange</button>
+      </form>
+
+      {% if stage2 %}
+      <div class="mx-6 mb-5 px-3.5 py-3 rounded-sm border border-win/40 bg-win/[.06] flex items-center gap-3">
+        <img src="/static/img/victory-masq6-stage2.gif" alt="" class="w-16 h-10 object-cover rounded-sm border border-win/30"
+             onerror="this.style.display='none'">
+        <div class="text-[12px] text-win font-semibold">✔ Stage 2 cleared — you're holding a genuine access token.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-win shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🖼️</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-win uppercase">Stage 3 · Final</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Access the Gallery</h1>
+          <div class="text-[12px] text-dim">GET /masquerade/op6/photos/me?access_token=</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        Whatever token gets you here — one you earned through Stages 1–2, or one you simply guessed —
+        reaches the same place. Access tokens are 4-digit numbers, and this endpoint has no rate limit
+        either. That's not a hint to skip the earlier stages. It's the point: this is a fully
+        independent way in.
+      </div>
+
+      <form method="post" action="/masquerade/op6/present-resource" class="px-6 py-5">
+        <label for="at" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">access_token</label>
+        <input id="at" name="access_token" autocomplete="off"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-[12.5px] font-mono outline-none focus:border-win">
+        <button type="submit"
+                class="w-full mt-4 py-3 bg-win text-[#04120a] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Enter the Gallery</button>
+      </form>
+      <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">Or GET the endpoint directly with curl/Burp — same check either way.</div>
+    </div>
+
+  </div>
+  </div>
+{% endblock %}

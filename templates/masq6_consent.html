@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}The Clubhouse // Authorize Access{% endblock %}
+{% block body %}
+  <div class="relative min-h-screen">
+    <img src="/static/img/masq6-clubhouse-map.jpg" alt="" onerror="this.style.display='none'"
+         class="absolute inset-0 w-full h-full object-cover opacity-40">
+    <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
+  <div class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-[440px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🖨️</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-def uppercase">Authorization Request</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">{{ client_id }}</h1>
+        </div>
+      </div>
+
+      <div class="px-6 py-6">
+        <div class="text-[13px] text-dim leading-relaxed mb-4">
+          <span class="text-txt font-semibold">{{ client_id }}</span> is requesting permission to:
+        </div>
+        <div class="px-3.5 py-2.5 rounded-sm border border-line bg-[#0c1116] text-[13px] text-txt mb-4">
+          🔓 {{ scope }}
+        </div>
+        <div class="text-[11px] text-dim">You'll be returned to:</div>
+        <div class="px-3.5 py-2 rounded-sm border border-line bg-[#0c1116] text-[11px] font-mono text-dim break-all mb-5">{{ redirect_uri }}</div>
+
+        <form method="post" action="/masquerade/op6/oauth/approve" class="flex gap-3">
+          <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+          <input type="hidden" name="scope" value="{{ scope }}">
+          <button type="submit" name="decision" value="allow"
+                  class="flex-1 py-3 bg-win text-[#04120a] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition text-[13px]">Allow</button>
+          <button type="submit" name="decision" value="deny"
+                  class="flex-1 py-3 bg-transparent border border-line text-dim hover:text-txt hover:border-red transition rounded-sm text-[13px] uppercase tracking-wide font-bold">Deny</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  </div>
+{% endblock %}

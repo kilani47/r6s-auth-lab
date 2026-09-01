@@ -142,11 +142,13 @@ MASQUERADE_MISSIONS = [
               "against doesn't — crack it offline and you can sign anything you want.",
      "built": True, "path": "/masquerade/op5/"},
     {"id": 6, "code": "06", "name": "Delegated Trust",
-     "wstg": "OAuth", "topic": "Attacking OAuth",
+     "wstg": "OAuth 2.0", "topic": "Attacking OAuth",
      "attacker": {"slug": "hibana", "name": "Hibana"},
      "defender": {"slug": "bandit", "name": "Bandit"},
-     "blurb": "OAuth lets one app vouch for you to another. Vouching can be forged.",
-     "built": False, "path": "#"},
+     "blurb": "Three independent doors into one delegated-access flow: an unchecked "
+              "redirect, a guessable client secret, and a token space small enough "
+              "to brute-force outright.",
+     "built": True, "path": "/masquerade/op6/"},
     {"id": 7, "code": "07", "name": "Unlimited Attempts",
      "wstg": "2FA", "topic": "Bypassing 2FA",
      "attacker": {"slug": "ash", "name": "Ash"},
@@ -1236,6 +1238,210 @@ def masq5_present_token():
             flag=MASQ5_FLAG, payload_json=masq5_pretty(payload))
     return render_template("masq5_relay.html", authed=True, is_lead=False,
         payload_json=masq5_pretty(payload))
+
+
+# ====================================== MASQUERADE OP 06 — attacking OAuth (WSTG-SESS / delegated auth)
+# The Clubhouse runs a member photo gallery. A separate kiosk terminal -- "Print
+# Kiosk" -- wants to fetch a member's photos on their behalf, so the club uses
+# OAuth: a member never hands the kiosk their password, only a scoped, revocable
+# token. That's the whole point of delegated authorization. Three independent
+# weaknesses break it, each teaching a different lesson, each reachable on its own:
+#
+#   Stage 1 -- the authorize endpoint hands the authorization CODE to whatever
+#   redirect_uri the request claims, without ever checking it's the kiosk's real,
+#   registered callback. A link is all it takes -- the member never sees anything
+#   wrong, because the consent screen looks completely normal either way.
+#
+#   Stage 2 -- exchanging a code for a token requires the kiosk's client_secret,
+#   and that secret is short and guessable, with no rate limit on wrong guesses.
+#   A stolen code plus a cracked secret is a real, working access token.
+#
+#   Stage 3 -- the access tokens themselves are small, low-entropy numbers, and
+#   the resource endpoint that accepts them has no rate limit either. This one
+#   doesn't even need Stages 1-2 -- it's a fully independent way in, exactly the
+#   way a real assessment often finds several unrelated doors into the same room.
+#
+# Codes and tokens never expire in this app either -- worth noticing on its own.
+MASQ6_USER = "club.member"
+MASQ6_PASSWORD = "Clubhouse2024!"                  # your own account -- baseline only
+MASQ6_CLIENT_ID = "print_kiosk"
+MASQ6_CLIENT_SECRET = "kiosk41"                    # weak -- wordlists/op6_client_secrets.txt
+MASQ6_SCOPE = "view_gallery"
+MASQ6_LEGIT_REDIRECT = "/masquerade/op6/callback"  # the kiosk's real, registered callback
+MASQ6_CATCHER_PATH = "/masquerade/op6/attacker-catch"
+MASQ6_NPC_NAME = "N. Kruger"
+MASQ6_NPC_TITLE = "Club Member"
+MASQ6_FLAG = "R6S{hibana_burned_through_every_layer_of_delegated_trust}"
+
+MASQ6_CODES = {}        # code -> {"redirect_uri":..., "consumed": bool, "origin": "member"|"npc"}
+MASQ6_TOKENS = {}        # access_token -> {"scope": ...}
+MASQ6_CAPTURED = []      # [{"code":..., "redirect_uri":...}] -- the "attacker's" access log
+
+
+def masq6_new_code():
+    return secrets.token_hex(4)               # deliberately NOT low-entropy -- Stage 1 isn't about guessing codes
+
+
+def masq6_new_token():
+    return str(random.randint(1000, 9999))     # VULN: tiny, brute-forceable space -- Stage 3
+
+
+@app.route("/masquerade/op6/")
+def masq6_index():
+    return render_template("masq6_index.html",
+        npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE,
+        captured=list(reversed(MASQ6_CAPTURED)),
+        stage1=session.get("masq6_stage1", False),
+        stage2=session.get("masq6_stage2", False))
+
+
+@app.route("/masquerade/op6/login", methods=["POST"])
+def masq6_login():
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if username != MASQ6_USER or password != MASQ6_PASSWORD:
+        return render_template("masq6_index.html", error="Invalid username or password.",
+            npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE, captured=list(reversed(MASQ6_CAPTURED)),
+            stage1=session.get("masq6_stage1", False), stage2=session.get("masq6_stage2", False)), 401
+    session["masq6_user"] = username
+    return redirect(url_for("masq6_index"))
+
+
+def masq6_generate_code(redirect_uri, origin):
+    code = masq6_new_code()
+    MASQ6_CODES[code] = {"redirect_uri": redirect_uri, "consumed": False, "origin": origin}
+    return code
+
+
+@app.route("/masquerade/op6/oauth/authorize")
+def masq6_authorize():
+    """The real authorize endpoint -- shows a consent screen to whoever is
+    logged in. VULN lives in masq6_approve below: redirect_uri is never checked
+    against anything registered for client_id."""
+    if not session.get("masq6_user"):
+        return redirect(url_for("masq6_index"))
+    client_id = request.args.get("client_id", "")
+    redirect_uri = request.args.get("redirect_uri", "")
+    scope = request.args.get("scope", "")
+    response_type = request.args.get("response_type", "")
+    return render_template("masq6_consent.html", client_id=client_id,
+        redirect_uri=redirect_uri, scope=scope, response_type=response_type)
+
+
+@app.route("/masquerade/op6/oauth/approve", methods=["POST"])
+def masq6_approve():
+    redirect_uri = request.form.get("redirect_uri", "")
+    if request.form.get("decision") != "allow":
+        return redirect(url_for("masq6_index"))
+    code = masq6_generate_code(redirect_uri, origin="member")
+    return redirect(f"{redirect_uri}?code={code}")
+
+
+@app.route("/masquerade/op6/callback")
+def masq6_callback():
+    """The kiosk's REAL, registered callback -- what a correctly-validated
+    redirect_uri would always point back to."""
+    code = request.args.get("code", "")
+    return render_template("masq6_callback.html", code=code)
+
+
+@app.route("/masquerade/op6/lure-member", methods=["POST"])
+def masq6_lure_member():
+    """Stage 1's delivery simulation: N. Kruger is always logged in and always
+    approves -- exactly like a real unsuspecting member would. The redirect_uri
+    the player supplies is NEVER checked against anything registered for the
+    kiosk, which is the entire vulnerability."""
+    redirect_uri = (request.form.get("redirect_uri") or "").strip()
+    if not redirect_uri:
+        return render_template("masq6_index.html", lure_error="Enter a redirect_uri to send.",
+            npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE, captured=list(reversed(MASQ6_CAPTURED)),
+            stage1=session.get("masq6_stage1", False), stage2=session.get("masq6_stage2", False)), 400
+    code = masq6_generate_code(redirect_uri, origin="npc")
+    if redirect_uri.startswith(MASQ6_CATCHER_PATH):
+        MASQ6_CAPTURED.append({"code": code, "redirect_uri": redirect_uri})
+        session["masq6_stage1"] = True
+    return render_template("masq6_index.html",
+        lure_sent=redirect_uri, npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE,
+        captured=list(reversed(MASQ6_CAPTURED)),
+        stage1=session.get("masq6_stage1", False), stage2=session.get("masq6_stage2", False))
+
+
+@app.route("/masquerade/op6/attacker-catch")
+def masq6_attacker_catch():
+    """A stand-in for 'your own server's access log' -- in a real attack this
+    would just be whatever server you control at the redirect_uri you chose."""
+    return render_template("masq6_catch.html", captured=list(reversed(MASQ6_CAPTURED)))
+
+
+def masq6_do_token_exchange(grant_type, code, client_id, client_secret, redirect_uri):
+    """The real exchange logic, shared by the real endpoint and the browser
+    convenience form below -- one check, two ways to reach it. VULN:
+    client_secret is weak and there is no rate limit on failed attempts --
+    brute-forceable directly, online, as many times as an attacker likes."""
+    if grant_type != "authorization_code":
+        return 400, {"error": "unsupported_grant_type"}
+    entry = MASQ6_CODES.get(code)
+    if not entry or entry["consumed"]:
+        return 400, {"error": "invalid_grant", "error_description": "Unknown or already-used code."}
+    if redirect_uri != entry["redirect_uri"]:
+        return 400, {"error": "invalid_grant", "error_description": "redirect_uri does not match the one used to obtain this code."}
+    if client_id != MASQ6_CLIENT_ID:
+        return 401, {"error": "invalid_client"}
+    if client_secret != MASQ6_CLIENT_SECRET:
+        return 401, {"error": "invalid_client", "error_description": "Client authentication failed."}
+    entry["consumed"] = True
+    token = masq6_new_token()
+    MASQ6_TOKENS[token] = {"scope": MASQ6_SCOPE}
+    session["masq6_stage2"] = True
+    return 200, {"access_token": token, "token_type": "bearer", "scope": MASQ6_SCOPE}
+
+
+@app.route("/masquerade/op6/oauth/token", methods=["POST"])
+def masq6_token():
+    status, data = masq6_do_token_exchange(
+        request.form.get("grant_type", ""), request.form.get("code", ""),
+        request.form.get("client_id", ""), request.form.get("client_secret", ""),
+        request.form.get("redirect_uri", ""))
+    return jsonify(data), status
+
+
+@app.route("/masquerade/op6/exchange-code", methods=["POST"])
+def masq6_exchange_code_form():
+    """Convenience wrapper for the SAME check as /oauth/token, for exploring one
+    guess at a time from the browser -- not a separate, easier code path. Real
+    brute-forcing happens by scripting many requests to the real endpoint."""
+    code = (request.form.get("code") or "").strip()
+    secret_guess = (request.form.get("secret") or "").strip()
+    redirect_uri = MASQ6_CODES.get(code, {}).get("redirect_uri", "")
+    _status, data = masq6_do_token_exchange("authorization_code", code, MASQ6_CLIENT_ID, secret_guess, redirect_uri)
+    return render_template("masq6_index.html",
+        exchange_result=data, npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE,
+        captured=list(reversed(MASQ6_CAPTURED)),
+        stage1=session.get("masq6_stage1", False), stage2=session.get("masq6_stage2", False))
+
+
+@app.route("/masquerade/op6/photos/me")
+def masq6_photos_me():
+    """The real protected resource. VULN: reachable with nothing but a guessed
+    4-digit token -- no rate limit here either, and no requirement that this
+    token was ever obtained through Stages 1-2 at all."""
+    token = request.args.get("access_token", "")
+    if token not in MASQ6_TOKENS:
+        return jsonify({"error": "invalid_token"}), 401
+    mark_masq_solved(6)
+    return jsonify({"ok": True, "scope": MASQ6_TOKENS[token]["scope"],
+        "photos": ["clubhouse_bar.jpg", "back_room_meeting.jpg", "n_kruger_bday.jpg"],
+        "flag": MASQ6_FLAG})
+
+
+@app.route("/masquerade/op6/present-resource", methods=["POST"])
+def masq6_present_resource():
+    """Convenience wrapper for the SAME check as /photos/me, rendered as a page."""
+    token = (request.form.get("access_token") or "").strip()
+    if token not in MASQ6_TOKENS:
+        return render_template("masq6_victory.html", authed=False), 401
+    mark_masq_solved(6)
+    return render_template("masq6_victory.html", authed=True, flag=MASQ6_FLAG)
 
 
 @app.after_request

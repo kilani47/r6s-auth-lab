@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Print Kiosk // Callback{% endblock %}
+{% block body %}
+  <div class="relative min-h-screen">
+    <img src="/static/img/masq6-clubhouse-map.jpg" alt="" onerror="this.style.display='none'"
+         class="absolute inset-0 w-full h-full object-cover opacity-40">
+    <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
+  <a href="/masquerade/op6/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ The Clubhouse</a>
+  <div class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-[440px] bg-panel2/95 border border-line hud-frame hud-frame-win shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🖨️</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-win uppercase">Print Kiosk</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Callback Received</h1>
+        </div>
+      </div>
+      <div class="px-6 py-8 text-center">
+        {% if code %}
+        <div class="text-5xl mb-4">✅</div>
+        <div class="font-mono text-[15px] text-win mb-2">Code received normally.</div>
+        <div class="px-3.5 py-2.5 rounded-sm border border-line bg-[#0c1116] text-[12px] font-mono text-txt break-all mb-3">code={{ code }}</div>
+        <div class="text-[13px] text-dim leading-relaxed">This is exactly how OAuth is supposed to work — the kiosk's real callback receiving a code the member approved for it, specifically.</div>
+        {% else %}
+        <div class="text-5xl mb-4">🤷</div>
+        <div class="font-mono text-[15px] text-dim">No code in this request.</div>
+        {% endif %}
+        <a href="/masquerade/op6/" class="inline-block mt-5 px-5 py-2.5 rounded-sm border border-line text-dim hover:border-atk hover:text-txt transition text-[13px]">← The Clubhouse</a>
+      </div>
+    </div>
+  </div>
+  </div>
+{% endblock %}
