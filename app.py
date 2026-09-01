@@ -1352,27 +1352,13 @@ def masq6_login():
     session["masq6_user"] = username
     # Land the member ON their own gallery -- the normal, logged-in experience,
     # so "what a member actually sees" is concrete before any attack is attempted.
-    return redirect(url_for("masq6_my_gallery"))
+    return redirect(url_for("masq6_gallery_view"))
 
 
 @app.route("/masquerade/op6/logout")
 def masq6_logout():
     session.pop("masq6_user", None)
     return redirect(url_for("masq6_index"))
-
-
-@app.route("/masquerade/op6/my-gallery")
-def masq6_my_gallery():
-    """The normal, logged-in member experience: view YOUR OWN gallery, straight
-    from your session cookie -- no OAuth, no token. This is the baseline the
-    whole attack is measured against. Your own gallery has only ordinary photos;
-    the private, flag-bearing item lives in N. Kruger's gallery, reachable only
-    by stealing the delegated access he grants to Print Kiosk."""
-    me = session.get("masq6_user")
-    if not me:
-        return redirect(url_for("masq6_index"))
-    return render_template("masq6_gallery.html", owner=me,
-        gallery=MASQ6_GALLERIES.get(me, []), npc_name=MASQ6_NPC_NAME)
 
 
 def masq6_generate_code(redirect_uri, owner):
@@ -1518,20 +1504,35 @@ def masq6_exchange_code_form():
         stage1=session.get("masq6_stage1", False), stage2=session.get("masq6_stage2", False))
 
 
+def masq6_authenticate():
+    """THE authorization check for this resource -- the one and only place
+    that decides whose gallery a request gets. Accepts EITHER a Bearer
+    access_token (what Print Kiosk, or anyone holding a stolen/guessed token,
+    presents) OR your own session cookie (the normal logged-in browser path).
+    A token takes priority when one is supplied, since presenting one is an
+    explicit request to act as whoever it belongs to. This is the real shape
+    a lot of production resource servers have: one endpoint, first-party
+    session clients and third-party OAuth clients both walking in the same
+    door -- which is exactly why a weak token space (Stage 3) is enough to
+    compromise it on its own, with no session and no OAuth flow involved."""
+    token = request.values.get("access_token", "")
+    if token:
+        entry = MASQ6_TOKENS.get(token)
+        return (entry["owner"], "token") if entry else (None, None)
+    me = session.get("masq6_user")
+    return (me, "session") if me else (None, None)
+
+
 @app.route("/masquerade/op6/photos/me")
 def masq6_photos_me():
-    """The real protected resource. VULN: reachable with nothing but a guessed
-    4-digit token -- no rate limit here either, and no requirement that this
-    token was ever obtained through Stages 1-2 at all. The response is that
-    owner's REAL gallery -- your own token gets your own boring photos; only a
-    token stolen from someone else ever surfaces their private item, and the
-    flag lives there, not floating free on every successful request."""
-    token = request.args.get("access_token", "")
-    if token not in MASQ6_TOKENS:
-        return jsonify({"error": "invalid_token"}), 401
-    owner = MASQ6_TOKENS[token]["owner"]
+    """The real protected resource, JSON form -- what Print Kiosk (or an
+    attacker with curl/Burp) actually calls. Runs through masq6_authenticate()
+    above, same as the HTML view below: same check, same data, two renderings."""
+    owner, via = masq6_authenticate()
+    if not owner:
+        return jsonify({"error": "invalid_token_or_session"}), 401
     gallery = MASQ6_GALLERIES.get(owner, [])
-    resp = {"ok": True, "scope": MASQ6_TOKENS[token]["scope"], "gallery_owner": owner,
+    resp = {"ok": True, "auth": via, "gallery_owner": owner,
         "photos": [p["caption"] for p in gallery]}
     if any(p.get("private") for p in gallery):
         mark_masq_solved(6)
@@ -1539,20 +1540,26 @@ def masq6_photos_me():
     return jsonify(resp)
 
 
-@app.route("/masquerade/op6/present-resource", methods=["POST"])
-def masq6_present_resource():
-    """Convenience wrapper for the SAME check as /photos/me, rendered as a page."""
-    token = (request.form.get("access_token") or "").strip()
-    if token not in MASQ6_TOKENS:
+@app.route("/masquerade/op6/gallery", methods=["GET", "POST"])
+def masq6_gallery_view():
+    """The single HTML view onto this SAME resource -- reached either by
+    clicking 'View My Gallery' as a logged-in member (GET, session cookie,
+    no token needed) or by submitting an access_token at Stage 3 (POST,
+    Bearer-token path). Both go through masq6_authenticate() above; nothing
+    here re-implements or duplicates that check."""
+    owner, via = masq6_authenticate()
+    if not owner:
         return render_template("masq6_victory.html", authed=False), 401
-    owner = MASQ6_TOKENS[token]["owner"]
     gallery = MASQ6_GALLERIES.get(owner, [])
     is_victim = any(p.get("private") for p in gallery)
     if is_victim:
         mark_masq_solved(6)
+    if via == "session":
+        return render_template("masq6_gallery.html", owner=owner,
+            gallery=gallery, npc_name=MASQ6_NPC_NAME)
     return render_template("masq6_victory.html", authed=True,
         flag=MASQ6_FLAG if is_victim else None, owner=owner, is_victim=is_victim,
-        gallery=gallery, npc_name=MASQ6_NPC_NAME)
+        gallery=gallery, npc_name=MASQ6_NPC_NAME, via=via)
 
 
 @app.after_request
