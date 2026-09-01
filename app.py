@@ -1273,8 +1273,8 @@ MASQ6_NPC_NAME = "N. Kruger"
 MASQ6_NPC_TITLE = "Club Member"
 MASQ6_FLAG = "R6S{hibana_burned_through_every_layer_of_delegated_trust}"
 
-MASQ6_CODES = {}        # code -> {"redirect_uri":..., "consumed": bool, "origin": "member"|"npc"}
-MASQ6_TOKENS = {}        # access_token -> {"scope": ...}
+MASQ6_CODES = {}        # code -> {"redirect_uri":..., "consumed": bool, "owner": <whose consent this is>}
+MASQ6_TOKENS = {}        # access_token -> {"scope":..., "owner": <whose gallery this unlocks>}
 MASQ6_CAPTURED = []      # [{"code":..., "redirect_uri":...}] -- the "attacker's" access log
 
 
@@ -1307,9 +1307,13 @@ def masq6_login():
     return redirect(url_for("masq6_index"))
 
 
-def masq6_generate_code(redirect_uri, origin):
+def masq6_generate_code(redirect_uri, owner):
+    """owner is WHOSE consent this code represents -- the member who actually
+    clicked Allow. Purely narrative bookkeeping (nothing gates on it), but it's
+    what makes "whose account did I just compromise" a real, visible answer
+    instead of an implied one."""
     code = masq6_new_code()
-    MASQ6_CODES[code] = {"redirect_uri": redirect_uri, "consumed": False, "origin": origin}
+    MASQ6_CODES[code] = {"redirect_uri": redirect_uri, "consumed": False, "owner": owner}
     return code
 
 
@@ -1333,7 +1337,7 @@ def masq6_approve():
     redirect_uri = request.form.get("redirect_uri", "")
     if request.form.get("decision") != "allow":
         return redirect(url_for("masq6_index"))
-    code = masq6_generate_code(redirect_uri, origin="member")
+    code = masq6_generate_code(redirect_uri, owner=session.get("masq6_user", MASQ6_USER))
     return redirect(f"{redirect_uri}?code={code}")
 
 
@@ -1356,7 +1360,7 @@ def masq6_lure_member():
         return render_template("masq6_index.html", lure_error="Enter a redirect_uri to send.",
             npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE, captured=list(reversed(MASQ6_CAPTURED)),
             stage1=session.get("masq6_stage1", False), stage2=session.get("masq6_stage2", False)), 400
-    code = masq6_generate_code(redirect_uri, origin="npc")
+    code = masq6_generate_code(redirect_uri, owner=MASQ6_NPC_NAME)
     if redirect_uri.startswith(MASQ6_CATCHER_PATH):
         MASQ6_CAPTURED.append({"code": code, "redirect_uri": redirect_uri})
         session["masq6_stage1"] = True
@@ -1391,9 +1395,9 @@ def masq6_do_token_exchange(grant_type, code, client_id, client_secret, redirect
         return 401, {"error": "invalid_client", "error_description": "Client authentication failed."}
     entry["consumed"] = True
     token = masq6_new_token()
-    MASQ6_TOKENS[token] = {"scope": MASQ6_SCOPE}
+    MASQ6_TOKENS[token] = {"scope": MASQ6_SCOPE, "owner": entry["owner"]}
     session["masq6_stage2"] = True
-    return 200, {"access_token": token, "token_type": "bearer", "scope": MASQ6_SCOPE}
+    return 200, {"access_token": token, "token_type": "bearer", "scope": MASQ6_SCOPE, "belongs_to": entry["owner"]}
 
 
 @app.route("/masquerade/op6/oauth/token", methods=["POST"])
@@ -1429,7 +1433,8 @@ def masq6_photos_me():
     if token not in MASQ6_TOKENS:
         return jsonify({"error": "invalid_token"}), 401
     mark_masq_solved(6)
-    return jsonify({"ok": True, "scope": MASQ6_TOKENS[token]["scope"],
+    owner = MASQ6_TOKENS[token]["owner"]
+    return jsonify({"ok": True, "scope": MASQ6_TOKENS[token]["scope"], "gallery_owner": owner,
         "photos": ["clubhouse_bar.jpg", "back_room_meeting.jpg", "n_kruger_bday.jpg"],
         "flag": MASQ6_FLAG})
 
@@ -1441,7 +1446,10 @@ def masq6_present_resource():
     if token not in MASQ6_TOKENS:
         return render_template("masq6_victory.html", authed=False), 401
     mark_masq_solved(6)
-    return render_template("masq6_victory.html", authed=True, flag=MASQ6_FLAG)
+    owner = MASQ6_TOKENS[token]["owner"]
+    is_victim = owner != session.get("masq6_user", MASQ6_USER)
+    return render_template("masq6_victory.html", authed=True, flag=MASQ6_FLAG,
+        owner=owner, is_victim=is_victim)
 
 
 @app.after_request

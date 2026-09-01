@@ -34,6 +34,15 @@
       <div class="mt-3 text-4xl sm:text-5xl font-display font-bold tracking-[.2em] text-white text-glow-win animate-rise-1">DELEGATED, NOT PROTECTED</div>
       <div class="text-win tracking-[.2em] text-[13px] mt-1 animate-rise-2">HIBANA BURNED THROUGH EVERY LAYER · MASQUERADE 06 CLEARED</div>
       <div class="mt-4 text-[13px] text-dim animate-rise-2 leading-relaxed">
+        {% if is_victim %}
+        You're looking at <b class="text-txt">{{ owner }}'s</b> gallery — permission {{ owner }}
+        gave to Print Kiosk, not to you, redirected straight into your hands instead.
+        {% else %}
+        You're looking at your own gallery this time — the token's real, the access is real, and
+        it still proves nothing about anyone else's account. Reach it as {{ owner }} next.
+        {% endif %}
+      </div>
+      <div class="mt-1 text-[11px] text-dim animate-rise-2">
         An unvalidated redirect, a weak client secret, and a token space small enough to guess —
         three independent doors into a system built to hand out permission, not identity.
       </div>
