@@ -1385,6 +1385,17 @@ def masq6_approve():
     return redirect(f"{redirect_uri}?code={code}")
 
 
+@app.route("/masquerade/op6/reset-stage/<int:stage>")
+def masq6_reset_stage(stage):
+    """Redo a single stage's demonstration without resetting the whole
+    operation -- clears just that stage's session-tracked 'cleared' flag."""
+    if stage == 1:
+        session.pop("masq6_stage1", None)
+    elif stage == 2:
+        session.pop("masq6_stage2", None)
+    return redirect(request.referrer or url_for("masq6_index"))
+
+
 @app.route("/masquerade/op6/callback")
 def masq6_callback():
     """The kiosk's REAL, registered callback -- what a correctly-validated

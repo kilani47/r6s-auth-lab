@@ -73,7 +73,10 @@
       <div class="mx-6 mt-4 mb-1 rounded-sm border border-win/40 bg-win/[.06] overflow-hidden">
         <img src="/static/img/victory-masq6-stage1.gif" alt="" class="w-full h-[170px] object-cover"
              onerror="this.style.display='none'">
-        <div class="px-4 pt-3.5 pb-1 text-[13px] text-win font-display font-bold tracking-wide uppercase">✔ Stage 1 cleared — here's exactly what just happened</div>
+        <div class="px-4 pt-3.5 pb-1 flex items-center justify-between gap-3">
+          <div class="text-[13px] text-win font-display font-bold tracking-wide uppercase">✔ Stage 1 cleared — here's exactly what just happened</div>
+          <a href="/masquerade/op6/reset-stage/1" class="shrink-0 hud-tag text-[9.5px] tracking-widest uppercase text-dim border border-line px-2.5 py-[3px] hover:border-red hover:text-red transition">↺ Redo</a>
+        </div>
         <ol class="px-4 pb-2 mt-2 space-y-2 text-[12.5px] text-dim leading-relaxed list-decimal list-inside">
           <li>You sent {{ npc_name }} a link to the real authorize endpoint — but with <b class="text-txt">your</b> address in <code class="text-txt">redirect_uri</code> instead of Print Kiosk's.</li>
           <li>{{ npc_name }} opened it. The consent screen looked completely ordinary — "Print Kiosk wants: view_gallery" — nothing on it reveals where the code is actually headed.</li>
@@ -157,7 +160,8 @@
       <div class="mx-6 mb-5 px-3.5 py-3 rounded-sm border border-win/40 bg-win/[.06] flex items-center gap-3">
         <img src="/static/img/victory-masq6-stage2.gif" alt="" class="w-16 h-10 object-cover rounded-sm border border-win/30"
              onerror="this.style.display='none'">
-        <div class="text-[12px] text-win font-semibold">✔ Stage 2 cleared — you're holding a genuine access token.</div>
+        <div class="text-[12px] text-win font-semibold flex-1">✔ Stage 2 cleared — you're holding a genuine access token.</div>
+        <a href="/masquerade/op6/reset-stage/2" class="shrink-0 hud-tag text-[9.5px] tracking-widest uppercase text-dim border border-line px-2.5 py-[3px] hover:border-red hover:text-red transition">↺ Redo</a>
       </div>
       {% endif %}
     </div>

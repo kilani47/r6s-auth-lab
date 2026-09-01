@@ -42,10 +42,12 @@
         endpoint, to a token that was never meant to leave Print Kiosk's hands.
       </div>
 
+      {% set ns = namespace(private_photo=None) %}
       <div class="text-[10px] tracking-widest text-dim uppercase mx-6 mt-4 mb-1.5">{{ owner }}'s Gallery</div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 px-6">
         {% for p in gallery %}
           {% if p.private %}
+            {% set ns.private_photo = p %}
           <div class="hud-frame hud-frame-win border border-win/60 bg-win/[.10] p-2 relative animate-slam">
             <img src="/static/img/victory-masq6-stage3.gif" alt="Private photo — unlocked"
                  onerror="this.onerror=null;this.src='/static/img/ops/hibana.svg';"
@@ -61,16 +63,23 @@
         {% endfor %}
       </div>
 
-      <div class="mx-6 mt-4 px-3.5 py-3 rounded-sm border border-dashed border-win/40 bg-win/[.06] text-[12px] text-dim leading-relaxed">
-        <span class="text-win font-semibold">{{ owner }}'s private photo</span> — the one queued
-        for kiosk pickup and never shared with anyone else — opened for you the instant you
-        presented a token that was never yours.
+      {% if ns.private_photo %}
+      <div class="mx-6 mt-4 mb-2 hud-frame hud-frame-win border border-win/50 bg-win/[.06] overflow-hidden animate-slam">
+        <div class="px-4 pt-3 text-[10px] tracking-widest text-win uppercase">🔓 Opened — {{ owner }}'s private photo</div>
+        <img src="/static/img/victory-masq6-stage3.gif" alt="{{ ns.private_photo.caption }}"
+             onerror="this.onerror=null;this.src='/static/img/ops/hibana.svg';this.className='w-32 h-32 mx-auto my-3 opacity-90';"
+             class="w-full h-40 object-cover mt-2">
+        <div class="px-4 py-3 text-[12px] text-dim leading-relaxed">
+          <span class="text-txt font-semibold">{{ ns.private_photo.caption }}</span> —
+          {{ ns.private_photo.desc }}. This isn't a separate reward screen — it's the actual photo
+          the stolen token unlocked, sitting right here inside {{ owner }}'s gallery.
+        </div>
+        <div class="mx-4 mb-4 px-3.5 py-3 rounded-sm border border-win/30 bg-black/25 font-mono">
+          <div class="text-[9.5px] tracking-widest text-win/80 uppercase mb-1.5">print_tag — embedded in this photo's own metadata</div>
+          <code class="block text-[14px] sm:text-base text-[#eafff0] font-bold word-break">{{ flag }}</code>
+        </div>
       </div>
-
-      <div class="mx-6 mt-4 mb-2 px-4 py-3.5 hud-frame hud-frame-win border border-win/40 bg-win/[.06]">
-        <div class="text-[10px] tracking-[.25em] text-dim uppercase">Masquerade 06 Token</div>
-        <code class="block mt-1.5 text-[15px] sm:text-lg text-[#eafff0] font-bold word-break font-mono">{{ flag }}</code>
-      </div>
+      {% endif %}
 
       <div class="px-6 pt-2 pb-5 text-[11px] text-dim leading-relaxed">
         An unvalidated redirect, a weak client secret, and a token space small enough to guess —
