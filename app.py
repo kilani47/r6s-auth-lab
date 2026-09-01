@@ -1514,8 +1514,16 @@ def masq6_authenticate():
     a lot of production resource servers have: one endpoint, first-party
     session clients and third-party OAuth clients both walking in the same
     door -- which is exactly why a weak token space (Stage 3) is enough to
-    compromise it on its own, with no session and no OAuth flow involved."""
-    token = request.values.get("access_token", "")
+    compromise it on its own, with no session and no OAuth flow involved.
+
+    Accepts the token two ways, matching RFC 6750: the real
+    Authorization: Bearer <token> header (what Burp, curl, and any real
+    OAuth client actually send) takes priority, with ?access_token= as a
+    fallback for testing straight from a browser address bar or form."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
+    if not token:
+        token = request.values.get("access_token", "")
     if token:
         entry = MASQ6_TOKENS.get(token)
         return (entry["owner"], "token") if entry else (None, None)
