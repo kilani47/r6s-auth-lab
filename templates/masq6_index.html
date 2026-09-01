@@ -67,10 +67,30 @@
       {% if lure_error %}
       <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ lure_error }}</div>
       {% endif %}
+
+      {% if stage1 %}
+      <div class="mx-6 mt-4 mb-1 rounded-sm border border-win/40 bg-win/[.06] overflow-hidden">
+        <img src="/static/img/victory-masq6-stage1.gif" alt="" class="w-full h-[170px] object-cover"
+             onerror="this.style.display='none'">
+        <div class="px-4 pt-3.5 pb-1 text-[13px] text-win font-display font-bold tracking-wide uppercase">✔ Stage 1 cleared — here's exactly what just happened</div>
+        <ol class="px-4 pb-2 mt-2 space-y-2 text-[12.5px] text-dim leading-relaxed list-decimal list-inside">
+          <li>You sent {{ npc_name }} a link to the real authorize endpoint — but with <b class="text-txt">your</b> address in <code class="text-txt">redirect_uri</code> instead of Print Kiosk's.</li>
+          <li>{{ npc_name }} opened it. The consent screen looked completely ordinary — "Print Kiosk wants: view_gallery" — nothing on it reveals where the code is actually headed.</li>
+          <li>{{ npc_name }} clicked <b class="text-txt">Allow</b>. That approval is real and genuinely theirs — they authorized Print Kiosk, in good faith.</li>
+          <li>Because the server never checked that <code class="text-txt">redirect_uri</code> belonged to Print Kiosk, the resulting code was mailed to <b class="text-txt">you</b> instead.</li>
+          <li>That code — <code class="text-[#eafff0] bg-black/30 px-1 rounded-sm">{{ captured[0].code if captured else '…' }}</code> — represents {{ npc_name }}'s real permission, sitting in your mailbox right now.</li>
+        </ol>
+        <div class="mx-4 mb-4 mt-1 px-3.5 py-2.5 rounded-sm border border-dashed border-def/40 bg-def/[.06] text-[12px] text-dim">
+          <b class="text-def">This isn't gallery access yet.</b> A code alone is deliberately inert —
+          Print Kiosk's own <code class="text-txt">client_secret</code> is still required to redeem
+          it. Take this code down to <b class="text-txt">Stage 2</b> to turn it into something usable.
+        </div>
+      </div>
+      {% endif %}
+
       {% if lure_sent %}
-      <div class="mx-6 mt-4 px-3.5 py-3 rounded-sm text-[13px] border bg-win/[.08] border-win/40 text-[#9be3a7]">
-        {{ npc_name }} opened the link and approved access. The resulting code was sent to
-        <code class="text-[#eafff0]">{{ lure_sent }}</code>.
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[12px] border bg-win/[.08] border-win/40 text-[#9be3a7]">
+        Link delivered — code sent to <code class="text-[#eafff0]">{{ lure_sent }}</code>.
       </div>
       {% endif %}
 
@@ -94,14 +114,6 @@
         <div class="text-[12px] text-dim">Nothing captured yet.</div>
         {% endif %}
       </div>
-
-      {% if stage1 %}
-      <div class="mx-6 mb-5 px-3.5 py-3 rounded-sm border border-win/40 bg-win/[.06] flex items-center gap-3">
-        <img src="/static/img/victory-masq6-stage1.gif" alt="" class="w-16 h-10 object-cover rounded-sm border border-win/30"
-             onerror="this.style.display='none'">
-        <div class="text-[12px] text-win font-semibold">✔ Stage 1 cleared — you're holding a stolen authorization code.</div>
-      </div>
-      {% endif %}
     </div>
 
     <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
