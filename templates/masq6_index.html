@@ -179,11 +179,13 @@
       </form>
 
       {% if stage2 %}
-      <div class="mx-6 mb-5 px-3.5 py-3 rounded-sm border border-win/40 bg-win/[.06] flex items-center gap-3">
-        <img src="/static/img/victory-masq6-stage2.gif" alt="" class="w-16 h-10 object-cover rounded-sm border border-win/30"
+      <div class="mx-6 mb-5 rounded-sm border border-win/40 bg-win/[.06] overflow-hidden">
+        <img src="/static/img/victory-masq6-stage2.gif" alt="" class="w-full h-[170px] object-cover"
              onerror="this.style.display='none'">
-        <div class="text-[12px] text-win font-semibold flex-1">✔ Stage 2 cleared — you're holding a genuine access token.</div>
-        <a href="/masquerade/op6/reset-stage/2" class="shrink-0 hud-tag text-[9.5px] tracking-widest uppercase text-dim border border-line px-2.5 py-[3px] hover:border-red hover:text-red transition">↺ Redo</a>
+        <div class="px-4 py-3 flex items-center justify-between gap-3">
+          <div class="text-[13px] text-win font-display font-bold tracking-wide uppercase">✔ Stage 2 cleared — you're holding a genuine access token.</div>
+          <a href="/masquerade/op6/reset-stage/2" class="shrink-0 hud-tag text-[9.5px] tracking-widest uppercase text-dim border border-line px-2.5 py-[3px] hover:border-red hover:text-red transition">↺ Redo</a>
+        </div>
       </div>
       {% endif %}
     </div>
