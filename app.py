@@ -1335,6 +1335,7 @@ def masq6_index():
     return render_template("masq6_index.html",
         npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE,
         captured=list(reversed(MASQ6_CAPTURED)),
+        me=session.get("masq6_user"),
         stage1=session.get("masq6_stage1", False),
         stage2=session.get("masq6_stage2", False))
 
@@ -1346,9 +1347,32 @@ def masq6_login():
     if username != MASQ6_USER or password != MASQ6_PASSWORD:
         return render_template("masq6_index.html", error="Invalid username or password.",
             npc_name=MASQ6_NPC_NAME, npc_title=MASQ6_NPC_TITLE, captured=list(reversed(MASQ6_CAPTURED)),
-            stage1=session.get("masq6_stage1", False), stage2=session.get("masq6_stage2", False)), 401
+            me=None, stage1=session.get("masq6_stage1", False),
+            stage2=session.get("masq6_stage2", False)), 401
     session["masq6_user"] = username
+    # Land the member ON their own gallery -- the normal, logged-in experience,
+    # so "what a member actually sees" is concrete before any attack is attempted.
+    return redirect(url_for("masq6_my_gallery"))
+
+
+@app.route("/masquerade/op6/logout")
+def masq6_logout():
+    session.pop("masq6_user", None)
     return redirect(url_for("masq6_index"))
+
+
+@app.route("/masquerade/op6/my-gallery")
+def masq6_my_gallery():
+    """The normal, logged-in member experience: view YOUR OWN gallery, straight
+    from your session cookie -- no OAuth, no token. This is the baseline the
+    whole attack is measured against. Your own gallery has only ordinary photos;
+    the private, flag-bearing item lives in N. Kruger's gallery, reachable only
+    by stealing the delegated access he grants to Print Kiosk."""
+    me = session.get("masq6_user")
+    if not me:
+        return redirect(url_for("masq6_index"))
+    return render_template("masq6_gallery.html", owner=me,
+        gallery=MASQ6_GALLERIES.get(me, []), npc_name=MASQ6_NPC_NAME)
 
 
 def masq6_generate_code(redirect_uri, owner):

@@ -22,6 +22,27 @@
         </div>
       </div>
 
+      {% if me %}
+      <div class="px-6 py-6">
+        <div class="px-3.5 py-3 rounded-sm border border-win/40 bg-win/[.06] text-[13px] text-[#9be3a7] flex items-center gap-2">
+          <span class="text-lg">✓</span>
+          <span>Signed in as <b class="text-[#eafff0]">{{ me }}</b> — your session is live.</span>
+        </div>
+        <div class="text-[13px] text-dim leading-relaxed mt-4">
+          This is the account you control. Logging in as yourself lets you see <b class="text-txt">your
+          own</b> gallery — the normal member view. To reach <b class="text-txt">{{ npc_name }}'s</b>
+          gallery you'll never get a password; you'll steal the delegated access below.
+        </div>
+        <div class="grid gap-3 mt-5">
+          <a href="/masquerade/op6/my-gallery"
+             class="block text-center py-3 hud-btn font-display font-bold tracking-wide uppercase text-[13px] bg-def text-[#04101c]">→ View My Gallery</a>
+          <a href="/masquerade/op6/oauth/authorize?response_type=code&client_id=print_kiosk&redirect_uri=%2Fmasquerade%2Fop6%2Fcallback&scope=view_gallery"
+             class="block text-center py-2.5 rounded-sm border border-line text-dim hover:border-def hover:text-txt transition text-[13px]">→ Authorize Print Kiosk (the normal OAuth flow)</a>
+          <a href="/masquerade/op6/logout"
+             class="block text-center text-[11px] tracking-widest uppercase text-dim hover:text-red transition mt-1">Sign out</a>
+        </div>
+      </div>
+      {% else %}
       <div class="mx-6 mt-4 px-3.5 py-2.5 rounded-sm text-[12px] border border-line bg-[#0c1116] text-dim">
         Test account provided — this mission isn't about the password:<br>
         <span class="text-txt font-semibold">club.member</span> / <span class="text-txt font-semibold">Clubhouse2024!</span>
@@ -45,9 +66,10 @@
         <a href="/masquerade/op6/oauth/authorize?response_type=code&client_id=print_kiosk&redirect_uri=%2Fmasquerade%2Fop6%2Fcallback&scope=view_gallery"
            class="text-[12px] text-def hover:underline">→ Authorize Print Kiosk yourself (the normal flow)</a>
       </div>
+      {% endif %}
     </div>
 
-    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+    <div id="stage1" class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm scroll-mt-6">
       <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
         <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🎣</div>
         <div>
