@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Kafe Dostoyevsky // Operations Vault{% endblock %}
+{% block body %}
+  <div class="relative min-h-screen">
+    <img src="/static/img/masq7-kafe-map.jpg" alt="" onerror="this.style.display='none'"
+         class="absolute inset-0 w-full h-full object-cover opacity-30">
+    <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.6),rgba(4,6,10,.96))]"></div>
+  <div class="fixed inset-0 scanlines pointer-events-none"></div>
+  <a href="/masquerade/op7/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Staff Portal</a>
+
+  <div class="min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-[600px] bg-panel2/95 border border-line hud-frame hud-frame-win shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🗄️</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-win uppercase">Access Granted · Second Factor Bypassed</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Operations Vault</h1>
+          <div class="text-[12px] text-dim">Signed in as {{ user }} — without ever holding the duty phone</div>
+        </div>
+      </div>
+
+      <div class="overflow-hidden border-b border-win/30">
+        <img src="/static/img/victory-masq7.gif" alt="Access granted"
+             onerror="this.onerror=null;this.src='/static/img/ops/warden.svg';this.className='w-[150px] h-[150px] mx-auto my-5 opacity-90';"
+             class="w-full h-[220px] object-cover animate-slam">
+      </div>
+
+      <div class="px-6 pt-5">
+        <div class="text-3xl sm:text-4xl font-display font-bold tracking-[.12em] text-white text-glow-win animate-rise-1">SECOND FACTOR DOWN</div>
+        <div class="text-win tracking-[.2em] text-[13px] mt-1 animate-rise-2">MASQUERADE 07 CLEARED</div>
+
+        <div class="mt-4 text-[13px] text-dim animate-rise-2 leading-relaxed">
+          {% if via == 'otp' %}
+          You never saw the code — you <b class="text-txt">brute-forced</b> it. It took
+          <b class="text-txt font-mono">{{ attempts }}</b> attempts, and nothing ever slowed you down,
+          rate-limited you, or locked the account. A four-digit second factor with no throttling is
+          just a short password wearing a badge.
+          {% elif via == 'forced-browsing' %}
+          You never even reached the second factor. The export endpoint checked that you'd cleared the
+          <b class="text-txt">password</b> step and never once checked whether you'd passed the OTP —
+          so you walked straight past a gate that was only ever enforced on the pages that remembered
+          to ask.
+          {% elif via == 'backup' %}
+          You never needed the code at all. A <b class="text-txt">backup code</b> — from a space small
+          enough to guess, with no rate limit — let you take the recovery door the OTP was supposed to
+          make unnecessary. The second factor was strong; the path around it wasn't.
+          {% endif %}
+        </div>
+
+        <div class="mt-4 px-3.5 py-3 rounded-sm border border-dashed border-win/40 bg-win/[.05] text-[12px] text-dim leading-relaxed animate-rise-3">
+          <span class="text-win font-semibold">One more thing worth reporting:</span> the correct OTP
+          here is never invalidated after it's used — present it again and it still works. Missing
+          single-use enforcement is a finding on its own, stacked on top of everything above.
+        </div>
+
+        <div class="mt-4 mb-2 px-4 py-3.5 hud-frame hud-frame-win border border-win/40 bg-win/[.06] animate-rise-3">
+          <div class="text-[10px] tracking-[.25em] text-dim uppercase">Masquerade 07 Token</div>
+          <code class="block mt-1.5 text-[15px] sm:text-lg text-[#eafff0] font-bold word-break font-mono">{{ flag }}</code>
+        </div>
+
+        <div class="text-[11px] text-dim leading-relaxed mt-3 animate-rise-4">
+          Brute-forceable code, an unenforced gate, and a weak recovery path — three independent doors
+          past a login that looked twice as secure as it was. The crypto was never the target; the
+          process around it was.
+        </div>
+      </div>
+
+      <div class="px-6 py-6 grid sm:grid-cols-2 gap-3 animate-rise-4">
+        <a href="/masquerade/op7/" class="block text-center py-2.5 rounded-sm border border-line text-dim hover:border-win hover:text-txt transition text-[13px]">← Try the other doors</a>
+        <a href="/" class="block text-center py-3 hud-btn font-display font-extrabold tracking-wide uppercase text-[13px] bg-win text-[#04120a]">▶ Return to Command</a>
+      </div>
+    </div>
+  </div>
+  </div>
+{% endblock %}

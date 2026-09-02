@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Kafe Dostoyevsky // Staff Portal{% endblock %}
+{% block body %}
+  <div class="relative min-h-screen">
+    <img src="/static/img/masq7-kafe-map.jpg" alt="" onerror="this.style.display='none'"
+         class="absolute inset-0 w-full h-full object-cover opacity-40">
+    <div class="absolute inset-0 bg-[radial-gradient(1100px_650px_at_50%_35%,rgba(7,9,12,.55),rgba(4,6,10,.94))]"></div>
+  <a href="/" class="fixed top-4 left-5 text-[12px] tracking-wide text-dim hover:text-txt transition">◄ Command</a>
+  <a href="/masquerade/reset-op/7" class="hud-tag fixed top-4 right-5 text-[10px] tracking-widest uppercase text-dim border border-line px-3 py-[3px] hover:border-red hover:text-red transition">↺ Reset Op 07</a>
+  <div class="min-h-screen flex flex-col items-center justify-center gap-5 p-6">
+
+    <!-- ============ Card 0 — the real portal: password, then the second factor -->
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="relative flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <img src="/static/img/ops/ash.svg" alt="Ash" class="w-[70px] h-[70px] shrink-0 drop-shadow-[0_4px_10px_rgba(0,0,0,.5)]">
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-atk uppercase">Masquerade 07 · The Second Factor</div>
+          <h1 class="my-1 text-xl tracking-wide font-display font-bold">Kafe Dostoyevsky</h1>
+          <div class="text-[12px] text-dim">Staff Operations Portal · Password + One-Time Code</div>
+        </div>
+        <div class="absolute top-3.5 right-3.5" title="Your operator: Ash">
+          <img src="/static/img/ops/ash.svg" alt="Ash" class="w-[30px] h-[30px] opacity-85">
+        </div>
+      </div>
+
+      {% if not pending %}
+      <div class="mx-6 mt-4 px-3.5 py-2.5 rounded-sm text-[12px] border border-line bg-[#0c1116] text-dim">
+        Staff password provided — this mission isn't about the password:<br>
+        <span class="text-txt font-semibold">night.duty</span> / <span class="text-txt font-semibold">KafeNight2024!</span>
+      </div>
+
+      {% if error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/masquerade/op7/login" class="px-6 py-5">
+        <label for="u" class="block text-[12px] text-dim mt-1 mb-1.5 tracking-wide uppercase">Staff ID</label>
+        <input id="u" name="username" autocomplete="off" placeholder="night.duty"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+        <label for="p" class="block text-[12px] text-dim mt-3.5 mb-1.5 tracking-wide uppercase">Password</label>
+        <input id="p" name="password" type="password" autocomplete="off"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm outline-none focus:border-atk">
+        <button type="submit"
+                class="w-full mt-5 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Sign In</button>
+      </form>
+      <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">Step 1 of 2. A one-time code is issued to the duty phone after the password checks out.</div>
+
+      {% else %}
+      <!-- Password step cleared -> the second-factor prompt -->
+      <div class="mx-6 mt-4 px-3.5 py-3 rounded-sm text-[13px] border bg-win/[.06] border-win/40 text-[#9be3a7] flex items-center gap-2">
+        <span class="text-lg">✓</span>
+        <span>First factor accepted as <b class="text-[#eafff0]">{{ user }}</b>. Second factor required.</span>
+      </div>
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        A <b class="text-txt">{{ otp_digits }}-digit</b> one-time code was sent to the duty phone —
+        a device you don't have. That prompt below is the only thing between you and the
+        Operations Vault. You never see the code; you have to <i>get past the prompt anyway</i>.
+        Three independent ways to do that are laid out beneath this card.
+      </div>
+
+      {% if otp_error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ otp_error }}</div>
+      {% endif %}
+
+      <form method="post" action="/masquerade/op7/verify-otp" class="px-6 py-5">
+        <label for="otp" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">One-time code</label>
+        <input id="otp" name="otp" autocomplete="off" inputmode="numeric" maxlength="{{ otp_digits }}"
+               placeholder="{{ '0' * otp_digits }}"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm font-mono tracking-[.4em] outline-none focus:border-atk">
+        <button type="submit"
+                class="w-full mt-4 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Verify Code</button>
+        <div class="mt-2 text-[11px] text-dim text-center">Failed attempts so far: <b class="text-txt font-mono">{{ attempts }}</b> — and counting, with no lockout.</div>
+      </form>
+      <div class="px-6 pb-5 text-center">
+        <a href="/masquerade/op7/logout" class="text-[11px] tracking-widest uppercase text-dim hover:text-red transition">Sign out / restart</a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if vault_locked %}
+    <div class="w-full max-w-[520px] px-4 py-3 rounded-sm border border-red/40 bg-red/[.07] text-[13px] text-[#ff9a9a]">
+      🔒 The Operations Vault is properly gated — it needs a <b>verified</b> session (a real or brute-forced
+      code, or a backup code). Clear Stage 1 or Stage 3 to reach it. Stage 2 gets the same data a different way.
+    </div>
+    {% endif %}
+
+    <!-- ============ Stage 1 — No Rate Limit -->
+    <div id="stage1" class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm scroll-mt-6">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🔁</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-atk uppercase">Stage 1</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">No Rate Limit</h1>
+          <div class="text-[12px] text-dim">POST /masquerade/op7/api/verify-otp</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        The code is only <b class="text-txt">{{ otp_digits }} digits</b> — 10,000 possibilities — and the
+        verify endpoint has <b class="text-txt">no rate limit and no lockout</b>. Every wrong guess just
+        comes back "invalid" and lets you try again. Loop <code class="text-txt">0000</code>–<code class="text-txt">9999</code>
+        against it and one of them is the real code. A second factor with no throttling is a short
+        password in disguise.
+      </div>
+
+      <div class="mx-6 mt-4 px-3.5 py-3 rounded-sm border border-line bg-[#0c1116] text-[11.5px] font-mono text-dim leading-relaxed overflow-x-auto">
+        <span class="text-atk">for i in $(seq -w 0 9999); do</span><br>
+        &nbsp;&nbsp;curl -s -X POST .../api/verify-otp -d "otp=$i" -b cookies.txt | grep -q '"ok": true' &amp;&amp; echo "CODE: $i"<br>
+        <span class="text-atk">done</span>
+      </div>
+
+      {% if stage1 %}
+      <div class="mx-6 mt-4 mb-5 rounded-sm border border-win/40 bg-win/[.06] px-4 py-3 flex items-center justify-between gap-3">
+        <div class="text-[13px] text-win font-display font-bold tracking-wide uppercase">✔ Stage 1 cleared — the code fell to brute force.</div>
+        <a href="/masquerade/op7/reset-stage/1" class="shrink-0 hud-tag text-[9.5px] tracking-widest uppercase text-dim border border-line px-2.5 py-[3px] hover:border-red hover:text-red transition">↺ Redo</a>
+      </div>
+      {% else %}
+      <div class="px-6 pb-5 text-[11px] text-dim text-center tracking-wide">Sign in first, then loop the endpoint — or test one guess in the code prompt above.</div>
+      {% endif %}
+    </div>
+
+    <!-- ============ Stage 2 — Forced Browsing -->
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-def shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🚪</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-def uppercase">Stage 2</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Forced Browsing</h1>
+          <div class="text-[12px] text-dim">GET /masquerade/op7/roster/export</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        Don't attack the code at all — walk around it. The duty-roster export endpoint checks that you
+        cleared the <b class="text-txt">password</b> step and <b class="text-txt">forgets to check the OTP
+        step</b>. Once you've signed in (step 1), request it directly and the second gate simply isn't
+        there. This is the most important lesson here: a 2FA check is worthless if the server only
+        enforces it on the pages that remember to ask.
+      </div>
+
+      {% if stage2 %}
+      <div class="mx-6 mt-4 mb-5 rounded-sm border border-win/40 bg-win/[.06] px-4 py-3 flex items-center justify-between gap-3">
+        <div class="text-[13px] text-win font-display font-bold tracking-wide uppercase">✔ Stage 2 cleared — you never touched the second factor.</div>
+        <a href="/masquerade/op7/reset-stage/2" class="shrink-0 hud-tag text-[9.5px] tracking-widest uppercase text-dim border border-line px-2.5 py-[3px] hover:border-red hover:text-red transition">↺ Redo</a>
+      </div>
+      {% else %}
+      <div class="px-6 py-5">
+        <a href="/masquerade/op7/roster/export"
+           class="block text-center py-3 bg-def text-[#04101c] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Open /roster/export directly →</a>
+        <div class="mt-2 text-[11px] text-dim text-center tracking-wide">Requires the password step only — no code, no backup, no verification.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ============ Stage 3 — Weak Recovery -->
+    <div class="w-full max-w-[520px] bg-panel2/95 border border-line hud-frame hud-frame-atk shadow-[0_22px_60px_rgba(0,0,0,.6)] backdrop-blur-sm">
+      <div class="flex items-center gap-4 px-6 py-5 hud-cut border-b border-line bg-gradient-to-b from-[#141b23] to-[#0f141a]">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-[#0c1116] border border-line flex items-center justify-center text-2xl">🎟️</div>
+        <div>
+          <div class="text-[11px] tracking-[.2em] text-atk uppercase">Stage 3</div>
+          <h1 class="my-1 text-lg tracking-wide font-display font-bold">Weak Recovery</h1>
+          <div class="text-[12px] text-dim">POST /masquerade/op7/api/recover</div>
+        </div>
+      </div>
+
+      <div class="px-6 pt-4 text-[13px] text-dim leading-relaxed">
+        "Lost the duty phone? Use a <b class="text-txt">backup code</b>." Backup codes look like
+        <code class="text-txt">KAFE-0000</code> … <code class="text-txt">KAFE-9999</code> — a tiny space,
+        no rate limit, and any valid one skips the OTP entirely. The recovery path exists to bypass the
+        second factor by design, so if <i>it's</i> weaker than the factor, the factor's strength never
+        mattered. <b class="text-def">2FA is only as strong as its weakest fallback.</b>
+      </div>
+
+      {% if recover_error %}
+      <div class="mx-6 mt-3 px-3.5 py-3 rounded-sm text-[13px] border bg-red/[.08] border-red/40 text-[#ff9a9a]">{{ recover_error }}</div>
+      {% endif %}
+
+      {% if stage3 %}
+      <div class="mx-6 mt-4 mb-5 rounded-sm border border-win/40 bg-win/[.06] px-4 py-3 flex items-center justify-between gap-3">
+        <div class="text-[13px] text-win font-display font-bold tracking-wide uppercase">✔ Stage 3 cleared — in through the recovery door.</div>
+        <a href="/masquerade/op7/reset-stage/3" class="shrink-0 hud-tag text-[9.5px] tracking-widest uppercase text-dim border border-line px-2.5 py-[3px] hover:border-red hover:text-red transition">↺ Redo</a>
+      </div>
+      {% else %}
+      <form method="post" action="/masquerade/op7/recover" class="px-6 py-5">
+        <label for="bk" class="block text-[12px] text-dim mb-1.5 tracking-wide uppercase">Backup code</label>
+        <input id="bk" name="backup" autocomplete="off" placeholder="KAFE-0000"
+               class="w-full px-3 py-2.5 bg-[#0c1116] border border-line rounded-sm text-txt text-sm font-mono outline-none focus:border-atk">
+        <button type="submit"
+                class="w-full mt-4 py-3 bg-atk text-[#0b0e11] font-bold tracking-wide uppercase hud-btn hover:brightness-110 transition">Use Backup Code</button>
+        <div class="mt-2 text-[11px] text-dim text-center">Single guess here — real recovery brute-forcing loops <code class="text-txt">/api/recover</code>.</div>
+      </form>
+      {% endif %}
+    </div>
+
+  </div>
+  </div>
+{% endblock %}

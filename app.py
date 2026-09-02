@@ -149,12 +149,14 @@ MASQUERADE_MISSIONS = [
               "redirect, a guessable client secret, and a token space small enough "
               "to brute-force outright.",
      "built": True, "path": "/masquerade/op6/"},
-    {"id": 7, "code": "07", "name": "Unlimited Attempts",
-     "wstg": "2FA", "topic": "Bypassing 2FA",
+    {"id": 7, "code": "07", "name": "The Second Factor",
+     "wstg": "WSTG-ATHN-03", "topic": "Bypassing 2FA",
      "attacker": {"slug": "ash", "name": "Ash"},
      "defender": {"slug": "warden", "name": "Warden"},
-     "blurb": "A second factor only helps if it has the same protections as the first.",
-     "built": False, "path": "#"},
+     "blurb": "Three independent ways past a one-time-code prompt: brute-force an OTP with no "
+              "rate limit, force-browse straight past a 2FA gate that was never enforced "
+              "server-side, or sign in through a backup-code path weaker than the code it replaces.",
+     "built": True, "path": "/masquerade/op7/"},
 ]
 
 MASQ_ATTACKERS = [m["attacker"] for m in MASQUERADE_MISSIONS]
@@ -1568,6 +1570,206 @@ def masq6_gallery_view():
     return render_template("masq6_victory.html", authed=True,
         flag=MASQ6_FLAG if is_victim else None, owner=owner, is_victim=is_victim,
         gallery=gallery, npc_name=MASQ6_NPC_NAME, via=via)
+
+
+# ====================================== MASQUERADE OP 07 — bypassing 2FA (WSTG-ATHN-03)
+# Kafe Dostoyevsky fronts a staff operations portal. Sign-in is password + a
+# 4-digit one-time code "sent to the duty phone" -- textbook two-factor auth.
+# A working staff password is handed to you; the entire mission is getting past
+# the SECOND factor, three genuinely independent ways, each a different real 2FA
+# failure from the field:
+#
+#   Stage 1 -- the OTP check has NO rate limit and NO lockout. A 4-digit code is
+#   10,000 possibilities and nothing stops you trying all of them. A second
+#   factor with no throttling is just a short password in disguise.
+#
+#   Stage 2 -- forced browsing. A sensitive endpoint (the duty-roster export)
+#   checks that you cleared the PASSWORD step and forgets to check the OTP step.
+#   You don't attack the code at all -- you walk around it, because the second
+#   gate was never actually enforced server-side.
+#
+#   Stage 3 -- the recovery path. "Lost your phone? Use a backup code." The
+#   backup codes are a tiny, unthrottled space -- weaker than the very factor
+#   they exist to replace. 2FA is only ever as strong as its weakest fallback.
+#
+# Secondary finding worth writing up: a correct OTP is never invalidated after
+# use here, so it's replayable -- single-use enforcement is missing too.
+MASQ7_USER = "night.duty"
+MASQ7_PASSWORD = "KafeNight2024!"          # provided -- not the point
+MASQ7_OTP_DIGITS = 4                        # short + (Stage 1) unthrottled
+MASQ7_FLAG = "R6S{warden_saw_through_the_second_factor}"
+# A handful of backup codes, each a 4-digit numeric inside a KAFE-#### shell --
+# a small, guessable, unthrottled space (Stage 3). Generated once at startup.
+MASQ7_BACKUP_CODES = {f"KAFE-{random.randint(0, 9999):04d}" for _ in range(10)}
+
+MASQ7_PENDING = {}   # login_id -> {"user":, "otp":, "verified": bool, "attempts": int, "via":}
+
+
+def masq7_current_pending():
+    lid = session.get("masq7_login")
+    return MASQ7_PENDING.get(lid) if lid else None
+
+
+def masq7_ctx(**extra):
+    p = masq7_current_pending()
+    ctx = dict(
+        pending=bool(p),
+        user=(p["user"] if p else None),
+        attempts=(p["attempts"] if p else 0),
+        otp_digits=MASQ7_OTP_DIGITS,
+        stage1=session.get("masq7_stage1", False),
+        stage2=session.get("masq7_stage2", False),
+        stage3=session.get("masq7_stage3", False),
+    )
+    ctx.update(extra)
+    return ctx
+
+
+def masq7_grant(p, via, stage_key):
+    """Promote this half-authenticated session (password done) to fully
+    VERIFIED, by whatever door it came through, and record the win."""
+    p["verified"] = True
+    p["via"] = via
+    session[stage_key] = True
+    mark_masq_solved(7)
+
+
+@app.route("/masquerade/op7/")
+def masq7_index():
+    return render_template("masq7_index.html", **masq7_ctx())
+
+
+@app.route("/masquerade/op7/login", methods=["POST"])
+def masq7_login():
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    if username != MASQ7_USER or password != MASQ7_PASSWORD:
+        return render_template("masq7_index.html",
+            **masq7_ctx(error="Invalid username or password.")), 401
+    login_id = secrets.token_hex(8)
+    otp = f"{random.randint(0, 10**MASQ7_OTP_DIGITS - 1):0{MASQ7_OTP_DIGITS}d}"
+    MASQ7_PENDING[login_id] = {"user": username, "otp": otp,
+                               "verified": False, "attempts": 0, "via": None}
+    session["masq7_login"] = login_id
+    # Password accepted. The code is "sent" to a device you don't control -- you
+    # never see `otp`. Getting past this second prompt is the whole mission.
+    return redirect(url_for("masq7_index"))
+
+
+@app.route("/masquerade/op7/logout")
+def masq7_logout():
+    lid = session.pop("masq7_login", None)
+    MASQ7_PENDING.pop(lid, None)
+    for k in ("masq7_stage1", "masq7_stage2", "masq7_stage3"):
+        session.pop(k, None)
+    return redirect(url_for("masq7_index"))
+
+
+@app.route("/masquerade/op7/reset-stage/<int:stage>")
+def masq7_reset_stage(stage):
+    session.pop(f"masq7_stage{stage}", None)
+    p = masq7_current_pending()
+    if p:
+        p["verified"] = False   # drop verified so the stage can be redone cleanly
+    return redirect(request.referrer or url_for("masq7_index"))
+
+
+# --- Stage 1: OTP verification, unthrottled --------------------------------
+@app.route("/masquerade/op7/api/verify-otp", methods=["POST"])
+def masq7_api_verify_otp():
+    """The real OTP check -- JSON in, JSON out, the thing you actually brute
+    force. VULN: no rate limit, no lockout, unlimited attempts against a tiny
+    4-digit space."""
+    p = masq7_current_pending()
+    if not p:
+        return jsonify({"ok": False, "error": "no_login_in_progress"}), 401
+    guess = (request.values.get("otp") or "").strip()
+    p["attempts"] += 1
+    if guess == p["otp"]:
+        masq7_grant(p, "otp", "masq7_stage1")
+        return jsonify({"ok": True, "next": url_for("masq7_vault")})
+    return jsonify({"ok": False, "error": "invalid_code", "attempts": p["attempts"]}), 401
+
+
+@app.route("/masquerade/op7/verify-otp", methods=["POST"])
+def masq7_verify_otp_form():
+    """Browser convenience: submit ONE code and watch the page react. Real
+    brute-forcing loops /api/verify-otp -- this is just for a single test."""
+    p = masq7_current_pending()
+    if not p:
+        return redirect(url_for("masq7_index"))
+    guess = (request.form.get("otp") or "").strip()
+    p["attempts"] += 1
+    if guess == p["otp"]:
+        masq7_grant(p, "otp", "masq7_stage1")
+        return redirect(url_for("masq7_vault"))
+    return render_template("masq7_index.html",
+        **masq7_ctx(otp_error="Incorrect code — and notice: no lockout, just try again.")), 401
+
+
+# --- Stage 2: forced browsing past an unenforced 2FA gate ------------------
+@app.route("/masquerade/op7/roster/export")
+def masq7_roster_export():
+    """A sensitive endpoint that checks the PASSWORD step and forgets the OTP
+    step. VULN: access is granted on session['masq7_login'] alone -- proof of
+    the FIRST factor only -- with no check that the second factor was ever
+    completed. Force-browse straight here and the second gate simply isn't
+    there."""
+    if not session.get("masq7_login"):
+        return redirect(url_for("masq7_index"))
+    p = masq7_current_pending()
+    if p:
+        masq7_grant(p, "forced-browsing", "masq7_stage2")
+    else:
+        session["masq7_stage2"] = True
+        mark_masq_solved(7)
+    return render_template("masq7_vault.html", flag=MASQ7_FLAG, via="forced-browsing",
+        user=(p["user"] if p else MASQ7_USER), attempts=(p["attempts"] if p else 0))
+
+
+# --- Stage 3: weak recovery path -------------------------------------------
+@app.route("/masquerade/op7/api/recover", methods=["POST"])
+def masq7_api_recover():
+    """Backup-code recovery -- JSON, the brute-force target. VULN: the backup
+    codes are a tiny, unthrottled space, weaker than the OTP they replace."""
+    p = masq7_current_pending()
+    if not p:
+        return jsonify({"ok": False, "error": "no_login_in_progress"}), 401
+    code = (request.values.get("backup") or "").strip().upper()
+    p["attempts"] += 1
+    if code in MASQ7_BACKUP_CODES:
+        masq7_grant(p, "backup", "masq7_stage3")
+        return jsonify({"ok": True, "next": url_for("masq7_vault")})
+    return jsonify({"ok": False, "error": "invalid_backup_code"}), 401
+
+
+@app.route("/masquerade/op7/recover", methods=["POST"])
+def masq7_recover_form():
+    p = masq7_current_pending()
+    if not p:
+        return redirect(url_for("masq7_index"))
+    code = (request.form.get("backup") or "").strip().upper()
+    p["attempts"] += 1
+    if code in MASQ7_BACKUP_CODES:
+        masq7_grant(p, "backup", "masq7_stage3")
+        return redirect(url_for("masq7_vault"))
+    return render_template("masq7_index.html",
+        **masq7_ctx(recover_error="Invalid backup code — no lockout on this path either.")), 401
+
+
+# --- The protected resource, correctly gated on the SECOND factor ----------
+@app.route("/masquerade/op7/vault")
+def masq7_vault():
+    """The Operations Vault -- the thing 2FA is supposed to protect. Correctly
+    gated: it requires a fully VERIFIED session. You reach verified via Stage 1
+    (brute the OTP) or Stage 3 (a cracked backup code). Stage 2 pulls the same
+    data from /roster/export without ever verifying at all -- which is the
+    whole point of that finding."""
+    p = masq7_current_pending()
+    if not (p and p["verified"]):
+        return render_template("masq7_index.html", **masq7_ctx(vault_locked=True)), 403
+    return render_template("masq7_vault.html", flag=MASQ7_FLAG, via=p.get("via") or "otp",
+        user=p["user"], attempts=p["attempts"])
 
 
 @app.after_request
