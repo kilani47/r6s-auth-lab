@@ -95,14 +95,31 @@ them.
 
 ## Stage 2 — 2FA not enforced server-side (forced browsing)
 
+### First you have to *find* it — that's half the finding
+
+This is forced browsing, and forced browsing only means anything when the door is actually
+hidden. The app never links `/masquerade/op7/staff/export` anywhere in its UI — you discover it
+by recon, the same way you would on a real engagement:
+
+- **`/robots.txt`** disallows `/masquerade/op7/staff/` — the classic case of a site's own
+  "please don't crawl this" file handing an attacker the exact paths worth looking at.
+- **The portal's client JS** (`/static/js/op7-portal.js`, loaded on the two-step page) names the
+  endpoint outright in its config, with a leftover dev comment admitting it "isn't behind the
+  second-factor check yet."
+- **Content discovery** (`ffuf`/`gobuster` with a common wordlist) would turn up `staff` and
+  `export` on their own.
+
+If the app had simply shown you a button, none of that skill would be exercised — which is why it
+doesn't.
+
 ### The bug — and why it's the most important one here
 
 The vault (`/vault`) is correctly gated: reach it without finishing 2FA and it bounces you with
-a 403. But the duty-roster export (`/roster/export`) checks only that you cleared the
+a 403. But the internal export (`/masquerade/op7/staff/export`) checks only that you cleared the
 **password** step — it never checks whether the **OTP** step happened:
 
 ```python
-# /roster/export
+# /masquerade/op7/staff/export
 if not session.get("masq7_login"):   # proof of the FIRST factor only
     return redirect(...)
 # ... hands over the protected data. It never checks `verified`.
@@ -135,7 +152,7 @@ treat "passed step 1" as "authenticated."
 
 ```bash
 for i in $(seq -w 0 9999); do
-  curl -s -X POST http://localhost:8000/masquerade/op7/api/recover \
+  curl -s -X POST http://localhost:8000/masquerade/op7/api/backup \
        -b cookies.txt -d "backup=KAFE-$i" | grep -q '"ok": true' && { echo "KAFE-$i"; break; }
 done
 ```

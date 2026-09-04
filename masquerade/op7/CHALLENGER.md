@@ -4,22 +4,26 @@
 **WSTG:** WSTG-ATHN-03 (Weak Lock-Out) · Bypassing Two-Factor Authentication
 **Target:** `http://localhost:8000/masquerade/op7/` (unlocks after Operation 06 is cleared)
 
-**No solutions below.** Read [`DEBRIEF.md`](DEBRIEF.md) only once you're stuck, want to check
-your work, or want the lesson spelled out after solving.
+**No solutions below.** The app deliberately tells you *nothing* about its weaknesses — finding
+them is the mission. Read [`DEBRIEF.md`](DEBRIEF.md) only once you've solved it, or want the full
+lesson afterward.
 
 ---
 
 ## Mission
 
-**Kafe Dostoyevsky** fronts a staff operations portal. Signing in takes two things: a staff
-password, and a **4-digit one-time code** sent to the on-duty phone. That's two-factor
-authentication — *something you know* plus *something you have* — and on paper it means a
-stolen password alone gets an attacker nowhere.
+**Kafe Dostoyevsky** fronts a staff operations portal. Sign-in takes two things: a staff
+password, and a **one-time code** sent to the on-duty phone. That's two-factor authentication —
+*something you know* plus *something you have* — and it's supposed to mean a stolen password
+alone gets an attacker nowhere.
 
-You have the password. You do **not** have the phone. The entire mission is getting past the
-second factor anyway — and there are **three completely separate ways to do it**, each a real
-failure a pentester finds in the field, none of them requiring the others. A real assessment
-report would list all three as distinct findings with distinct fixes.
+You have the password. You do **not** have the phone. Get into the portal anyway.
+
+Unlike the earlier missions, **this app doesn't label its own flaws.** There are no "Stage 1 /
+Stage 2" panels explaining what's wrong and how to exploit it — it looks like an ordinary login.
+Your job is to *explore* it like a real target and find the ways through. There are **three
+completely independent ones**, and a thorough tester finds all three and writes each up as a
+separate finding.
 
 ### What you're given
 
@@ -28,124 +32,100 @@ Staff ID:  night.duty
 Password:  KafeNight2024!
 ```
 
-A real, working password — first factor already solved. It "sends" a one-time code to a device
-you can't see. Everything interesting is what happens next.
+A real, working password — first factor already solved. Everything interesting is what happens
+after it.
 
 ---
 
-## Objectives
+## Objective
 
-### Stage 1 — Outlast a code that never gets tired of being wrong
+Reach the staff area behind the two-step prompt. Then keep going: **find every independent way
+past the second factor you can.** (There are three. None of them needs the others, and none of
+them is hinted at anywhere in the UI.)
 
-1. Sign in. You'll hit the one-time-code prompt. You don't have the code.
-2. Look at the code's shape. How many digits? How large is the space of possible values?
-3. Now ask the question that matters more than its length: **what happens on a wrong guess?**
-   Does the server slow you down, lock you out, or invalidate anything — or does it just say
-   "wrong" and let you try again, forever?
-4. If nothing stops you, then the whole space is searchable. Search it.
+Think like someone testing a real 2FA implementation. Your notes list where these things break —
+work through them against this target:
 
-### Stage 2 — Reach the goods without reaching the second factor
-
-5. The vault behind this login isn't the only thing your session can touch. Map the app — what
-   other endpoints exist for a signed-in staff member (roster, exports, reports)?
-6. For each one, ask a precise question: does *this* endpoint check that you passed **both**
-   factors, or only that you passed the **password**?
-7. If any sensitive endpoint is satisfied by the first factor alone, you never need the code at
-   all. Walk straight to it.
-
-### Stage 3 — Take the door the second factor left open on purpose
-
-8. Real 2FA always ships an escape hatch: *"Lost your device? Use a backup code."* Find it.
-9. A backup code exists specifically to **bypass** the OTP. So the only question worth asking is
-   whether the backup path is as strong as the factor it replaces — or weaker.
-10. If the backup codes come from a small, unthrottled space, they're a second brute-force door
-    — one that makes the strength of the OTP itself completely irrelevant.
+- **The code itself** — how long is it, and more importantly, *what happens when you get it
+  wrong*? Try. Watch what the server does (and doesn't do) on repeated failures.
+- **The attack surface you can't see** — a web app is more than the pages it links to. Which
+  endpoints exist that the menu never shows you, and how would you enumerate them? What does a
+  found endpoint check before it hands over data — both factors, or just the first?
+- **The way back in** — every real 2FA system has an answer to "I lost my device." Find this
+  one's, and ask whether it's as strong as the factor it replaces.
 
 ---
 
 ## Rules of Engagement
 
-Attack it like a real target — `curl`, Burp Intruder, Python `requests`. Stage 1 and Stage 3
-both need genuinely repeated requests; the mission page has a single-guess form for each so you
-can test your understanding, but neither one is how you actually search a whole space — that's a
-loop against the JSON API endpoints (`/api/verify-otp`, `/api/recover`). Stage 2 needs no
-brute-forcing at all — just one request to the right place.
+Attack it like a real target — `curl`, Burp, a browser with DevTools open, Python `requests`,
+and a content-discovery tool (`ffuf`/`gobuster`) if you reach for one. Two of the three ways in
+need genuinely repeated requests (a loop, or Burp Intruder); the third needs no brute-forcing at
+all, just finding the right door.
 
-Don't skip to reading `app.py`. Every finding here is visible from the outside: by reading a
-code's shape, by testing what a wrong guess actually does, and by asking each endpoint which
-factors it really checks.
+**Recon first.** Before you brute anything, look at what the app already hands you: the HTML it
+serves, the JavaScript it loads, and the well-known files every site has. The most important
+finding here isn't something you break — it's something you *find*.
+
+Don't read `app.py` until you've solved it. Everything is reachable from the outside.
 
 ---
 
-## 💡 Hints (progressive — open only if stuck)
+## 💡 Hints (progressive — open only if genuinely stuck)
 
-<details><summary>Hint 1 — Stage 1: length is not the point</summary>
+<details><summary>Hint 1 — the code prompt: length is not the point</summary>
 
-Four digits is only 10,000 values, yes — but a six-digit code (a million) would fall to the
-same attack. The real vulnerability isn't the length, it's that **nothing throttles wrong
-guesses**. Confirm that first: submit several wrong codes and watch for a slow-down, a lockout,
-or a changed response. If none comes, the length is just how long your loop runs.
+Submit a few wrong codes in a row. Does the server slow you down, lock the account, or change
+its response after several failures — or does it just say "incorrect" every time and let you keep
+going? If nothing stops you, then a short numeric code is simply a short password, and the whole
+space is searchable. Loop it (the prompt posts to a JSON endpoint you can see in your proxy).
 </details>
 
-<details><summary>Hint 2 — Stage 1: script the JSON endpoint, not the form</summary>
+<details><summary>Hint 2 — the hidden surface: read what the browser loads</summary>
 
-The on-page code box is for one guess. Real brute-forcing loops
-`POST /masquerade/op7/api/verify-otp` with `otp=0000`…`9999`, carrying your logged-in cookie,
-and watches for the response that says `"ok": true`. Burp Intruder or a five-line script both
-do it.
+The portal isn't only the pages you can click to. Open DevTools and read the JavaScript the
+two-step page pulls in — client code often names internal endpoints the UI never links. And
+check the one file almost every site publishes that lists paths it would rather you didn't visit.
+Both point at the same place here.
 </details>
 
-<details><summary>Hint 3 — Stage 2: enumerate the signed-in surface</summary>
+<details><summary>Hint 3 — the hidden surface: what does that endpoint actually check?</summary>
 
-After the password step you already hold a session. What can it reach *before* you enter any
-code? The mission page names one such endpoint outright — a duty-roster export. Request it
-directly, in the state you're in right after logging in, and see whether it cares that you never
-finished 2FA.
+Once you've found the unlinked endpoint, request it in the state you're in *right after entering
+your password* — before touching any code. Does it care that you never finished 2FA? An endpoint
+that's happy with the first factor alone is a second factor that isn't enforced.
 </details>
 
-<details><summary>Hint 4 — Stage 2: the bug is an inconsistency, not a missing check</summary>
+<details><summary>Hint 4 — the way back in: attack the fallback, not the factor</summary>
 
-The vault page *does* check for full 2FA — try it without verifying and you're bounced. The
-export endpoint doesn't. That difference **is** the finding: 2FA enforced in one place and
-forgotten in another is the single most common way real apps leak past a second factor.
-</details>
-
-<details><summary>Hint 5 — Stage 3: attack the fallback, not the factor</summary>
-
-Backup codes here look like `KAFE-0000` through `KAFE-9999`. That's the same size of space as
-the OTP, with the same lack of throttling — and any valid one skips the code entirely. Loop
-`POST /masquerade/op7/api/recover` with `backup=KAFE-0000`… and you'll land one.
+The two-step prompt offers a way in for someone who lost their device. Follow it. Note the
+*shape* of what it asks for (the page shows you the format), then ask the same question you asked
+about the code: is this space small, and does anything throttle guesses against it? A recovery
+path weaker than the factor it replaces makes the factor's strength irrelevant.
 </details>
 
 ---
 
-## Beyond these three — what else is worth checking
+## Beyond the three — worth checking and reporting
 
-Once all three doors are open, notice a few more properties of this exact app you can observe
-without further exploitation, and write them up alongside your findings:
+- **Single-use / replay:** once a correct code is accepted, is it invalidated? Try presenting the
+  same correct code again.
+- **Session regeneration:** is your session identifier rotated after full 2FA, or is the pre-2FA
+  session promoted in place? (Same root cause you met in Operation 02.)
+- **Scope:** should a code that authorises *login* also authorise a different sensitive action?
 
-- **Single-use:** after a correct OTP is accepted, is it invalidated? Try presenting the same
-  correct code a second time. (This is the classic *token replay* check from your notes.)
-- **Scope:** the code that authorises login — would the app accept the same code to authorise a
-  *different* sensitive action, if one existed? OTPs should be bound to their purpose.
-- **Session regeneration:** is your session identifier rotated after full 2FA completion, or is
-  the pre-2FA session simply promoted in place? (Same root cause you met in Operation 02.)
-
-None of these needs a working exploit to report — noticing and describing them accurately is
-the job.
+None of these needs a working exploit to report — noticing them is the job.
 
 ---
 
 ## Reporting
 
-Once solved:
-- **Finding 1** — no rate limiting / lock-out on OTP verification: the code space, and evidence
-  that the full space is searchable online
-- **Finding 2** — 2FA not enforced server-side on a sensitive endpoint (forced browsing): the
-  endpoint, and proof it returns protected data on the first factor alone
-- **Finding 3** — weak recovery path: the backup-code space, and the recovered code
-- **Secondary** — missing single-use / replay on a correct OTP, if you confirmed it
+- **Finding 1** — no rate limiting / lock-out on OTP verification
+- **Finding 2** — an unlinked sensitive endpoint that doesn't enforce 2FA (how you *found* it
+  matters — name the recon step)
+- **Finding 3** — a weak recovery path (the backup-code space)
+- **Secondary** — missing single-use / replay, if you confirmed it
 - **WSTG area** — Weak Lock-Out Mechanism / Two-Factor Authentication testing
-- **Impact & Fix** — for each finding, what an attacker gains, and how you'd remediate it
+- **Impact & Fix** — per finding
 
 Good luck, operator. Command is waiting. 🎭

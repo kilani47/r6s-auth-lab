@@ -30,22 +30,35 @@
         <div class="text-win tracking-[.2em] text-[13px] mt-1 animate-rise-2">MASQUERADE 07 CLEARED</div>
 
         <div class="mt-4 text-[13px] text-dim animate-rise-2 leading-relaxed">
-          {% if via == 'otp' %}
-          You never saw the code — you <b class="text-txt">brute-forced</b> it. It took
-          <b class="text-txt font-mono">{{ attempts }}</b> attempts, and nothing ever slowed you down,
-          rate-limited you, or locked the account. A four-digit second factor with no throttling is
-          just a short password wearing a badge.
+          {% if via == 'brute' %}
+          You never saw the code — you <b class="text-txt">brute-forced</b> it. Nothing ever slowed you
+          down, rate-limited you, or locked the account, so the whole 4-digit space was yours to search.
+          A second factor with no throttling is just a short password wearing a badge.
           {% elif via == 'forced-browsing' %}
-          You never even reached the second factor. The export endpoint checked that you'd cleared the
-          <b class="text-txt">password</b> step and never once checked whether you'd passed the OTP —
-          so you walked straight past a gate that was only ever enforced on the pages that remembered
-          to ask.
+          You never even reached the second factor. That export endpoint isn't linked anywhere in the
+          portal — you <b class="text-txt">found</b> it — and once found, it checked only that you'd
+          cleared the <b class="text-txt">password</b> step, never the OTP. A 2FA gate enforced on some
+          endpoints and forgotten on others isn't a gate.
           {% elif via == 'backup' %}
           You never needed the code at all. A <b class="text-txt">backup code</b> — from a space small
           enough to guess, with no rate limit — let you take the recovery door the OTP was supposed to
           make unnecessary. The second factor was strong; the path around it wasn't.
           {% endif %}
         </div>
+
+        {% if found %}
+        <div class="mt-4 px-3.5 py-3 rounded-sm border border-line bg-[#0c1116] text-[12px] text-dim leading-relaxed animate-rise-3">
+          <span class="text-txt font-semibold">Bypasses you've found so far: {{ found|length }} of 3.</span>
+          {% if found|length < 3 %}
+          There are still other, completely independent ways past this login — a different weakness in
+          the code prompt, an unlinked endpoint, and a recovery path. See how many you can find without
+          reading the debrief.
+          {% else %}
+          All three independent doors — the unthrottled code, the unenforced endpoint, and the weak
+          recovery path. Three separate findings, three separate fixes.
+          {% endif %}
+        </div>
+        {% endif %}
 
         <div class="mt-4 px-3.5 py-3 rounded-sm border border-dashed border-win/40 bg-win/[.05] text-[12px] text-dim leading-relaxed animate-rise-3">
           <span class="text-win font-semibold">One more thing worth reporting:</span> the correct OTP
@@ -66,7 +79,7 @@
       </div>
 
       <div class="px-6 py-6 grid sm:grid-cols-2 gap-3 animate-rise-4">
-        <a href="/masquerade/op7/" class="block text-center py-2.5 rounded-sm border border-line text-dim hover:border-win hover:text-txt transition text-[13px]">← Try the other doors</a>
+        <a href="/masquerade/op7/retry" class="block text-center py-2.5 rounded-sm border border-line text-dim hover:border-win hover:text-txt transition text-[13px]">← Try another way in</a>
         <a href="/" class="block text-center py-3 hud-btn font-display font-extrabold tracking-wide uppercase text-[13px] bg-win text-[#04120a]">▶ Return to Command</a>
       </div>
     </div>
