@@ -55,10 +55,9 @@ Each operation has its own briefing + debrief, grouped by campaign folder:
 | 04 | Signed, Not Sealed | **Kali** ⚔ **Echo** | WSTG-SESS-10 · JWT "none" algorithm |
 | 05 | Exposed Claim | **Jackal** ⚔ **Pulse** | WSTG-SESS-10 · Weak JWT secret |
 | 06 | Delegated Trust | **Hibana** ⚔ **Bandit** | OAuth 2.0 · 3-stage chained attack |
-| 07 | Unlimited Attempts | Ash ⚔ Warden | Bypassing 2FA |
+| 07 | The Second Factor | **Ash** ⚔ **Warden** | WSTG-ATHN-03 · Bypassing 2FA, 3 independent doors |
 
-**In progress** — Operations 01–06 ship today; the rest reveal on Command as they're built. Docs
-under [`masquerade/`](masquerade/).
+**Complete** — all seven operations ship. Docs under [`masquerade/`](masquerade/).
 
 Both campaigns unlock one operation at a time and reveal the next the moment the current one is
 cleared — same mechanic, independent progress trackers.

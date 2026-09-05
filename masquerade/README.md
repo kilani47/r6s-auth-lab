@@ -25,10 +25,9 @@ a `DEBRIEF.md` (spoilers, full answer key), and a `solver.py` reference solver.
 | 04 | Signed, Not Sealed | Kali ⚔ Echo | WSTG-SESS-10 · JWT "none" Algorithm | [CHALLENGER](op4/CHALLENGER.md) | [DEBRIEF](op4/DEBRIEF.md) |
 | 05 | Exposed Claim | Jackal ⚔ Pulse | WSTG-SESS-10 · Weak JWT Secret | [CHALLENGER](op5/CHALLENGER.md) | [DEBRIEF](op5/DEBRIEF.md) |
 | 06 | Delegated Trust | Hibana ⚔ Bandit | OAuth 2.0 · 3-Stage Chain | [CHALLENGER](op6/CHALLENGER.md) | [DEBRIEF](op6/DEBRIEF.md) |
-| 07 | Unlimited Attempts | Ash ⚔ Warden | Bypassing 2FA | *classified* | *classified* |
+| 07 | The Second Factor | Ash ⚔ Warden | WSTG-ATHN-03 · Bypassing 2FA, 3 Independent Doors | [CHALLENGER](op7/CHALLENGER.md) | [DEBRIEF](op7/DEBRIEF.md) |
 
-**Operations 01–06** are built and playable right now. The rest reveal on Command as they
-ship, one at a time, exactly like Shieldbreaker did.
+**All seven operations** are built and playable right now.
 
 ---
 
