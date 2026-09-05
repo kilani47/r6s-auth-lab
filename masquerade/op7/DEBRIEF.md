@@ -156,13 +156,39 @@ $ curl -s http://localhost:8000/static/js/op7-portal.js | grep -i staff
 The leftover dev comment even admits it predates the 2FA rollout and "isn't behind the
 second-factor check yet" — a gift, but only to someone who bothered to read the JS.
 
-**Way C — content discovery.** With no robots.txt or JS to read, you'd brute the path with a
-wordlist. Both segments are common dictionary words:
+**Way C — content discovery with a tool (the non-guessy version).** `robots.txt` (Way A) already
+tells you a directory exists at `/masquerade/op7/staff/` — it just doesn't name the file inside.
+That's the perfect setup for a content-discovery tool: point it at the known directory and let a
+wordlist find the file. Both `staff` and `export` are in the *stock* Kali `dirb/common.txt`
+(lines 3822 and 1538), so nothing here is a lucky guess.
+
+The trick that makes it clean: a **missing** path returns `404`, but the real endpoint returns
+`302` (it redirects you to the login because you haven't authenticated). So filter out 404 and
+whatever's left is real.
 
 ```bash
-ffuf -u http://localhost:8000/masquerade/op7/FUZZ -w /usr/share/wordlists/dirb/common.txt -b "session=…"
-# … then fuzz one level deeper under /staff/ for 'export'
+$ ffuf -u http://localhost:8000/masquerade/op7/staff/FUZZ \
+       -w /usr/share/wordlists/dirb/common.txt -fc 404
+
+export                  [Status: 302, Size: 219, Words: 18, Lines: 6]
 ```
+
+Same result with gobuster (it blacklists 404 with `-b`):
+
+```bash
+$ gobuster dir -u http://localhost:8000/masquerade/op7/staff \
+           -w /usr/share/wordlists/dirb/common.txt -b 404
+
+export               (Status: 302) [Size: 219] [--> /masquerade/op7/]
+```
+
+One hit, `export`, and its `302 → /masquerade/op7/` is itself a tell: an endpoint that *exists*
+and bounces unauthenticated callers to the login, rather than a flat 404. That's your door.
+
+(You can't skip the robots.txt/JS step and just brute `/masquerade/op7/FUZZ` from the root —
+there's no `staff` route at that level, only `staff/export` one level down, so a root-level scan
+never sees it. Recon *narrows* where to point the tool; the tool confirms what's there. That's
+the normal order of operations.)
 
 If the app had simply shown you a button, none of this skill would be exercised — which is why it
 doesn't.
