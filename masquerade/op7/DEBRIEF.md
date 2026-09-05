@@ -36,7 +36,7 @@ different categories, or you've just added a second thing to guess.
 | **Email OTP** | code/link emailed | *Weak* — only as strong as the email account, itself often just password-protected |
 | **TOTP / authenticator app** | code derived locally from a shared secret + current time | *Strongest* of these — the code is **generated on-device, never transmitted to be delivered**, so there's no delivery channel to intercept |
 
-**Exam takeaway:** SMS/email 2FA depends on an *external delivery channel* that can be hijacked;
+**Key takeaway:** SMS/email 2FA depends on an *external delivery channel* that can be hijacked;
 TOTP generates the code **locally**, so there's nothing in transit to steal. That's the whole
 reason authenticator apps outrank texts.
 

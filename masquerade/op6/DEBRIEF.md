@@ -18,8 +18,8 @@ all happen to live in the same small app.
 
 ## First, the five roles and four flows — worth being precise about
 
-Before the bugs, the vocabulary, because it's very easy to blur these together under exam
-pressure and it matters for how you write a finding up:
+Before the bugs, the vocabulary, because it's very easy to blur these together under pressure
+and it matters for how you write a finding up:
 
 | Role | Who it is in this mission |
 |---|---|
